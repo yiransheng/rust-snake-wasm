@@ -75,29 +75,3 @@ export function initialDraw(drawer, x, y, dir, len) {
     default:
   }
 }
-
-export function updateDraw(drawer, update) {
-  let type = update[0];
-  switch (type) {
-    case 0: {
-      // GameOver
-      break;
-    }
-    case 2: {
-      const x = update[1];
-      const y = update[2];
-      drawer.fill(x, y);
-      break;
-    }
-    case 4: {
-      const x = update[1];
-      const y = update[2];
-      drawer.fill(x, y);
-      const x2 = update[3];
-      const y2 = update[4];
-      drawer.clear(x2, y2);
-      break;
-    }
-    default:
-  }
-}

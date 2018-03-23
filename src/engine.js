@@ -15,6 +15,7 @@ export function engine(wasm) {
 }
 
 // commands
+export const GetFrame = { type: "get_frame" };
 export const GetDir = { type: "get_dir" };
 
 export const NextTick = { type: "next_tick" };
@@ -44,7 +45,6 @@ const initParams = [
 class GameEngine {
   constructor(wasm) {
     this._wasm = wasm;
-    this._dir = initParams[4];
     this._gen = null;
     this._frame = 0;
     this._running = false;
@@ -70,7 +70,7 @@ class GameEngine {
 
     this._gen = loop(this._wasm, { foodX: 16, foodY: 16 });
     this._running = true;
-    this._dir = initParams[4];
+    this._dirs = [initParams[4]];
     this._frame = 0;
     requestAnimationFrame(this._tick);
   }
@@ -86,53 +86,58 @@ class GameEngine {
     this._drawer = createDrawer(canvas);
   }
   _onKeyDown(e) {
-    if (this._running) {
+    if (this._running && this._dirs.length < 4) {
       switch (e.keyCode) {
         case 37:
-          this._dir = 4;
+          this._dirs.push(4);
           break;
         case 38:
-          this._dir = 1;
+          this._dirs.push(1);
           break;
         case 39:
-          this._dir = 3;
+          this._dirs.push(3);
           break;
         case 40:
-          this._dir = 2;
+          this._dirs.push(2);
           break;
         default:
       }
+    }
+  }
+  _get_dir() {
+    if (this._dirs.length === 1) {
+      return this._dirs[0];
+    } else {
+      return this._dirs.shift();
     }
   }
   _tick() {
     if (!this._running) {
       return;
     }
-    if (this._frame++ % 4 !== 1) {
-      requestAnimationFrame(this._tick);
-      return;
-    }
+    this._frame++;
+
+    let input;
     const cmds = [];
     while (true) {
-      const { done, value } = this._gen.next();
-      let cmd = value;
+      const { done, value: cmd } = this._gen.next(input);
       if (done) {
         this._stop();
+        return;
+      }
+      
+      if (cmd.type === 'next_tick') {
         break;
+      } else if (cmd.type === 'get_frame') {
+        input = this._frame;
+      } else if (cmd.type === 'get_dir') {
+        input = this._get_dir();
+      } else {
+        input = undefined;
       }
       cmds.push(cmd);
-      if (cmd.type === "get_dir") {
-        const { done, value: nextCmd } = this._gen.next(this._dir);
-        !done && cmds.push(nextCmd);
-      } else if (cmd.type === "next_tick") {
-        break;
-      } else {
-        cmds.push(cmd);
-      }
     }
-    for (const cmd of cmds) {
-      this._exec(cmd);
-    }
+    cmds.forEach(cmd => this._exec(cmd));
     requestAnimationFrame(this._tick);
   }
   _exec(cmd) {
@@ -150,6 +155,5 @@ class GameEngine {
   _stop() {
     this._gen = null;
     this._running = false;
-    this._frame = 0;
   }
 }

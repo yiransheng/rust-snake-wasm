@@ -1,8 +1,15 @@
 import { config } from "./render";
-import { GetDir, NextTick, Fill, Clear } from "./engine";
+import { GetDir, GetFrame, NextTick, Fill, Clear } from "./engine";
 
 export function* gameLoop(wasmInstance, { foodX, foodY }) {
   while (true) {
+    const frame = yield GetFrame; 
+    // update direction pressed every tick
+    // run game update every 4 ticks
+    if (frame % 5 !== 0) {
+      yield NextTick;
+      continue;
+    }
     const dir = yield GetDir;
     const ptr = wasmInstance.exports.tick(dir, foodX, foodY);
     // up to 20 bytes of update, read from WASM memory
@@ -16,8 +23,6 @@ export function* gameLoop(wasmInstance, { foodX, foodY }) {
     //  tag=2: update head position to x1, y1 (implies food eaten)
     //  tag=4: update head position to x1, y1, erase tail at x2, y2
     switch (update[0]) {
-      case 0:
-        return;
       case 2: {
         // generate a new food randomly (cannot get rand crate to work
         // on rust side)
@@ -35,7 +40,9 @@ export function* gameLoop(wasmInstance, { foodX, foodY }) {
         yield Fill(update[1], update[2]);
         break;
       }
+      case 0:
       default:
+        return;
         break;
     }
 
