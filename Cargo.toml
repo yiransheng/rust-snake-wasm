@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Yiran Sheng <shengyiran@gmail.com>"]
 
 [dependencies]
+
+js-sys = "0.3.2"
+web-sys = "0.3.2"
+wasm-bindgen = "0.2.25"

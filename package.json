@@ -1,0 +1,32 @@
+{
+  "name": "snake-wasm",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "cargo test"
+  },
+  "devDependencies": {
+      "text-encoding": "^0.7.0",
+    "html-webpack-plugin": "^3.2.0",
+    "webpack": "^4.11.1",
+    "webpack-cli": "^3.1.1",
+    "webpack-dev-server": "^3.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yiransheng/rust-snake-wasm.git"
+  },
+  "keywords": [
+    "wasm",
+    "rust",
+    "snake",
+    "game"
+  ],
+  "author": "Yiran Sheng",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yiransheng/rust-snake-wasm/issues"
+  },
+  "homepage": "https://github.com/yiransheng/rust-snake-wasm#readme"
+}
