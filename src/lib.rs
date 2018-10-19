@@ -10,6 +10,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 mod data;
+mod render;
 mod world;
 
 use world::{Direction, World, WorldBuilder};

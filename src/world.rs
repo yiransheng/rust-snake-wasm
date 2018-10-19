@@ -105,7 +105,11 @@ type Result<T> = ::std::result::Result<T, UpdateError>;
 impl<R: Rng> World<R> {
     pub fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
-        self.set_block(head, dir);
+        let head_dir: Direction = self.board.get_block(head).into();
+
+        if dir != head_dir.opposite() {
+            self.set_block(head, dir);
+        }
     }
     pub fn update(&mut self) -> Result<()> {
         let head_dir: Direction = self.board.get_block(self.head).into();
