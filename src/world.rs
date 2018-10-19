@@ -152,17 +152,23 @@ impl<R: Rng> World<R> {
             }
             Tile::Food => {
                 self.set_block(next_head, head_dir);
-                self.spawn_food();
+                let food_coord = self.spawn_food();
 
-                Ok(patch!(WorldUpdateEff::SetBlock {
-                    at: next_head,
-                    block: head_dir.into(),
-                }))
+                Ok(patch!(
+                    WorldUpdateEff::SetBlock {
+                        at: next_head,
+                        block: head_dir.into(),
+                    },
+                    WorldUpdateEff::SetBlock {
+                        at: food_coord,
+                        block: Block::food(),
+                    }
+                ))
             }
         }
     }
 
-    fn spawn_food(&mut self) {
+    fn spawn_food(&mut self) -> Coordinate {
         loop {
             let coord =
                 Coordinate::random_within(&mut self.rng, self.board.width, self.board.height);
@@ -170,7 +176,7 @@ impl<R: Rng> World<R> {
 
             if current_tile == Tile::Empty {
                 self.set_block(coord, Block::food());
-                return;
+                return coord;
             }
         }
     }
