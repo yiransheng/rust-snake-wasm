@@ -9,14 +9,21 @@ use wasm_bindgen::prelude::*;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
+mod data;
 mod world;
+
+use world::{Direction, World, WorldBuilder};
 
 #[wasm_bindgen]
 pub fn main() {
     use web_sys::console;
 
-    let mut rng = SmallRng::from_seed([123; 16]);
-    let n: u32 = rng.gen_range(0, 34);
-
-    console::log_2(&"Hello wasm".into(), &n.into());
+    let world = WorldBuilder::new()
+        .width(32)
+        .height(16)
+        .set_snake(1, 1)
+        .extend(Direction::West)
+        .extend(Direction::West)
+        .extend(Direction::West)
+        .build_with_seed::<SmallRng>([123; 16]);
 }
