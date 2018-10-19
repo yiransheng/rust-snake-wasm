@@ -9,5 +9,20 @@ crate-type = ["cdylib"]
 [dependencies]
 
 js-sys = "0.3.2"
-web-sys = "0.3.2"
 wasm-bindgen = "0.2.25"
+rand = "0.5.5"
+
+[dependencies.web-sys]
+features = [
+  'console',
+  'CanvasRenderingContext2d',
+  'Document',
+  'Element',
+  'EventTarget',
+  'HtmlCanvasElement',
+  'HtmlElement',
+  'MouseEvent',
+  'Node',
+  'Window',
+]
+

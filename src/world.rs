@@ -1,6 +1,8 @@
 use std::convert::{From, Into};
 use std::mem::transmute;
 
+use rand::Rng;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Direction {
     North = 0b1000_0000,
@@ -110,12 +112,24 @@ pub struct Coordinate {
 }
 
 impl Coordinate {
+    pub fn new(x: i32, y: i32) -> Self {
+        Coordinate { x, y }
+    }
     pub fn from_usize(x: usize, y: usize) -> Self {
         Coordinate {
             x: x as i32,
             y: y as i32,
         }
     }
+    fn random_within<R: Rng>(rng: &mut R, width: i32, height: i32) -> Self {
+        debug_assert!(width > 0 && height > 0);
+
+        let x = rng.gen_range(0, width);
+        let y = rng.gen_range(0, height);
+
+        Coordinate { x, y }
+    }
+
     fn move_towards(self, dir: Direction) -> Self {
         let Coordinate { x, y } = self;
         match dir {
@@ -146,9 +160,12 @@ impl Board {
             self.blocks[(y * width + x) as usize]
         }
     }
-    fn set_block(&mut self, coord: Coordinate, b: Block) {
+    fn set_block(&mut self, coord: Coordinate, b: Block) -> bool {
         if let Some(block) = self.get_block_mut(coord) {
             *block = b;
+            true
+        } else {
+            false
         }
     }
     fn get_block_mut(&mut self, coord: Coordinate) -> Option<&mut Block> {
@@ -202,10 +219,11 @@ impl Board {
     }
 }
 
-pub struct World {
+pub struct World<R> {
     board: Board,
     head: Coordinate,
     tail: Coordinate,
+    rng: R,
 }
 
 enum UpdateError {
@@ -215,7 +233,7 @@ enum UpdateError {
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
-impl World {
+impl<R: Rng> World<R> {
     pub fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
         self.set_block(head, dir);
@@ -243,19 +261,57 @@ impl World {
             }
             Tile::Food => {
                 self.set_block(next_head, head_dir);
+                self.spawn_food();
                 Ok(())
+            }
+        }
+    }
+
+    fn spawn_food(&mut self) {
+        loop {
+            let coord =
+                Coordinate::random_within(&mut self.rng, self.board.width, self.board.height);
+            let current_tile = Tile::from(self.board.get_block(coord));
+
+            if current_tile == Tile::Empty {
+                self.set_block(coord, Block::food());
+                return;
             }
         }
     }
 
     #[inline]
     fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
-        self.board.set_block(coord, b.into())
+        self.board.set_block(coord, b.into());
+    }
+}
+
+pub struct WorldBuilder {
+    width: u32,
+    height: u32,
+    tail: Coordinate,
+}
+
+pub struct SnakeBuilder {
+    board: Board,
+    head: Coordinate,
+}
+
+impl SnakeBuilder {
+    pub fn extend(&mut self, dir: Direction) -> &mut Self {
+        let next_head = self.head.move_towards(dir);
+        if self.board.set_block(next_head, Block::from(dir)) {
+            self.head = next_head;
+        }
+
+        self
     }
 }
 
 mod test_utils {
     use super::*;
+    use rand::rngs::SmallRng;
+    use rand::SeedableRng;
     use std::fmt;
 
     impl From<char> for Block {
@@ -284,7 +340,7 @@ mod test_utils {
         }
     }
 
-    impl World {
+    impl World<SmallRng> {
         #[allow(dead_code)]
         pub fn from_ascii(s: &str) -> Self {
             let height = s.lines().count() as u32;
@@ -316,11 +372,16 @@ mod test_utils {
                 }
             }
 
-            World { board, head, tail }
+            World {
+                board,
+                head,
+                tail,
+                rng: SmallRng::from_seed([0; 16]),
+            }
         }
     }
 
-    impl fmt::Display for World {
+    impl<R> fmt::Display for World<R> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             for y in 0..self.board.height {
                 for x in 0..self.board.width {
@@ -389,8 +450,9 @@ oooooooooo";
         world.update();
         world.update();
 
-        // ate food
-        let final_state = "..........
+        // ate food -> new food deterministically
+        // generated from known seed
+        let final_state = "....*.....
 ..........
 ..........
 .......o..
