@@ -10,7 +10,7 @@ pub trait GameState {
     type InputCmd;
     type UpdateEff;
 
-    fn mount(&self) -> Self::UpdateEff;
+    fn mount(&mut self) -> Self::UpdateEff;
 
     fn handle_input(&mut self, cmd: Self::InputCmd);
 
@@ -21,8 +21,8 @@ impl<R: Rng> GameState for World<R> {
     type InputCmd = Direction;
     type UpdateEff = Patch<WorldUpdateEff>;
 
-    fn mount(&self) -> Self::UpdateEff {
-        Patch::Empty
+    fn mount(&mut self) -> Self::UpdateEff {
+        self.init_update()
     }
     fn handle_input(&mut self, cmd: Direction) {
         self.set_direction(cmd);

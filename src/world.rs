@@ -120,6 +120,24 @@ impl<R: Rng> World<R> {
             self.set_block(head, dir);
         }
     }
+    pub fn init_update(&mut self) -> Patch<WorldUpdateEff> {
+        let mut updates = self
+            .iter_snake()
+            .map(|(at, dir)| WorldUpdateEff::SetBlock {
+                at,
+                block: dir.into(),
+            })
+            .collect::<Vec<_>>();
+
+        let food_coord = self.spawn_food();
+
+        updates.push(WorldUpdateEff::SetBlock {
+            at: food_coord,
+            block: Block::food(),
+        });
+
+        Patch::Many(updates)
+    }
     pub fn tick_update(&mut self) -> Result<Patch<WorldUpdateEff>> {
         let head_dir: Direction = self.board.get_block(self.head).into();
         let next_head = self.head.move_towards(head_dir);
@@ -182,8 +200,39 @@ impl<R: Rng> World<R> {
     }
 
     #[inline]
+    fn iter_snake(&self) -> SnakeIter {
+        SnakeIter {
+            board: &self.board,
+            at: self.tail,
+        }
+    }
+
+    #[inline]
     fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
         self.board.set_block(coord, b.into());
+    }
+}
+
+pub struct SnakeIter<'a> {
+    board: &'a Board,
+    at: Coordinate,
+}
+
+impl<'a> Iterator for SnakeIter<'a> {
+    type Item = (Coordinate, Direction);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let block = self.board.get_block(self.at);
+
+        if block.is_snake() {
+            let dir = Direction::from(block);
+            let current = self.at;
+            let next = current.move_towards(dir);
+            self.at = next;
+            Some((current, dir))
+        } else {
+            None
+        }
     }
 }
 
@@ -257,16 +306,12 @@ impl SnakeBuilder {
 
         let rng = R::from_seed(seed);
 
-        let mut world = World {
+        World {
             board: self.board,
             tail: self.tail,
             head: self.head,
             rng,
-        };
-
-        world.spawn_food();
-
-        world
+        }
     }
 }
 
