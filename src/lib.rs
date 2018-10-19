@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 
 mod world;
 
-fn main() {
+#[wasm_bindgen]
+pub fn main() {
     println!("Hello, world!");
 }

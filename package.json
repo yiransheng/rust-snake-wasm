@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "cargo test"
+    "test": "cargo test",
+    "build": "webpack",
+    "serve": "webpack-dev-server"
   },
   "devDependencies": {
       "text-encoding": "^0.7.0",

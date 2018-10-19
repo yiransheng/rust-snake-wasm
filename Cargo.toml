@@ -3,6 +3,9 @@ name = "snake-wasm"
 version = "0.1.0"
 authors = ["Yiran Sheng <shengyiran@gmail.com>"]
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 
 js-sys = "0.3.2"
