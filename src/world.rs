@@ -1,6 +1,8 @@
-pub use data::{Block, Coordinate, Direction, Tile};
 use rand::{Rng, SeedableRng};
 use std::convert::{From, Into};
+
+pub use data::{Block, Coordinate, Direction, Tile};
+use patch::Patch;
 
 struct Board {
     blocks: Vec<Block>,
@@ -95,9 +97,16 @@ pub struct World<R> {
     rng: R,
 }
 
-enum UpdateError {
+pub enum UpdateError {
     OutOfBound,
     CollideBody,
+}
+
+// side effect of a world update
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum WorldUpdateEff {
+    SetBlock { at: Coordinate, block: Block },
+    Clear { at: Coordinate, prev_block: Block },
 }
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
@@ -111,7 +120,7 @@ impl<R: Rng> World<R> {
             self.set_block(head, dir);
         }
     }
-    pub fn update(&mut self) -> Result<()> {
+    pub fn tick_update(&mut self) -> Result<Patch<WorldUpdateEff>> {
         let head_dir: Direction = self.board.get_block(self.head).into();
         let next_head = self.head.move_towards(head_dir);
         let next_head_tile: Tile = self.board.get_block(next_head).into();
@@ -130,12 +139,25 @@ impl<R: Rng> World<R> {
                 self.set_block(tail, Block::empty());
                 self.tail = next_tail;
 
-                Ok(())
+                Ok(patch!(
+                    WorldUpdateEff::SetBlock {
+                        at: next_head,
+                        block: head_dir.into(),
+                    },
+                    WorldUpdateEff::Clear {
+                        at: tail,
+                        prev_block: tail_dir.into()
+                    }
+                ))
             }
             Tile::Food => {
                 self.set_block(next_head, head_dir);
                 self.spawn_food();
-                Ok(())
+
+                Ok(patch!(WorldUpdateEff::SetBlock {
+                    at: next_head,
+                    block: head_dir.into(),
+                }))
             }
         }
     }
@@ -345,20 +367,20 @@ oooooooooo";
         let mut world = World::from_ascii(world);
 
         // east 3
-        world.update();
-        world.update();
-        world.update();
+        world.tick_update();
+        world.tick_update();
+        world.tick_update();
         // turn south
         world.set_direction(Direction::South);
         // south 2
-        world.update();
-        world.update();
+        world.tick_update();
+        world.tick_update();
         // turn west
         world.set_direction(Direction::West);
         // west 3
-        world.update();
-        world.update();
-        world.update();
+        world.tick_update();
+        world.tick_update();
+        world.tick_update();
 
         // ate food -> new food deterministically
         // generated from known seed

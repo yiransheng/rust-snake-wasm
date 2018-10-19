@@ -10,6 +10,9 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 mod data;
+mod game;
+#[macro_use]
+mod patch;
 mod render;
 mod world;
 
