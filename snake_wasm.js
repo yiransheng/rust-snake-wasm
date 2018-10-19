@@ -8,8 +8,6 @@ export function main() {
     return wasm.main();
 }
 
-const __widl_f_log_2__target = console.log;
-
 const stack = [];
 
 const slab = [{ obj: undefined }, { obj: null }, { obj: true }, { obj: false }];
@@ -25,11 +23,98 @@ function getObject(idx) {
     }
 }
 
-export function __widl_f_log_2_(arg0, arg1) {
-    __widl_f_log_2__target(getObject(arg0), getObject(arg1));
+export function __widl_instanceof_Window(idx) {
+    return getObject(idx) instanceof Window ? 1 : 0;
+}
+
+const __widl_f_request_animation_frame_Window_target = function(x0) {
+    return this.requestAnimationFrame(x0);
+};
+
+let cachegetUint32Memory = null;
+function getUint32Memory() {
+    if (cachegetUint32Memory === null || cachegetUint32Memory.buffer !== wasm.memory.buffer) {
+        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachegetUint32Memory;
 }
 
 let slab_next = slab.length;
+
+function addHeapObject(obj) {
+    if (slab_next === slab.length) slab.push(slab.length + 1);
+    const idx = slab_next;
+    const next = slab[idx];
+
+    slab_next = next;
+
+    slab[idx] = { obj, cnt: 1 };
+    return idx << 1;
+}
+
+export function __widl_f_request_animation_frame_Window(arg0, arg1, exnptr) {
+    try {
+        return __widl_f_request_animation_frame_Window_target.call(getObject(arg0), getObject(arg1));
+    } catch (e) {
+        const view = getUint32Memory();
+        view[exnptr / 4] = 1;
+        view[exnptr / 4 + 1] = addHeapObject(e);
+
+    }
+}
+
+const __widl_f_log_1__target = console.log;
+
+export function __widl_f_log_1_(arg0) {
+    __widl_f_log_1__target(getObject(arg0));
+}
+
+const lTextDecoder = typeof TextDecoder === 'undefined' ? require('util').TextDecoder : TextDecoder;
+
+let cachedTextDecoder = new lTextDecoder('utf-8');
+
+let cachegetUint8Memory = null;
+function getUint8Memory() {
+    if (cachegetUint8Memory === null || cachegetUint8Memory.buffer !== wasm.memory.buffer) {
+        cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
+    }
+    return cachegetUint8Memory;
+}
+
+function getStringFromWasm(ptr, len) {
+    return cachedTextDecoder.decode(getUint8Memory().subarray(ptr, ptr + len));
+}
+
+export function __wbg_newnoargs_f3005d02efe69623(arg0, arg1) {
+    let varg0 = getStringFromWasm(arg0, arg1);
+    return addHeapObject(new Function(varg0));
+}
+
+const __wbg_call_10738551fb4d99e4_target = Function.prototype.call || function() {
+    throw new Error(`wasm-bindgen: Function.prototype.call does not exist`);
+};
+
+export function __wbg_call_10738551fb4d99e4(arg0, arg1, exnptr) {
+    try {
+        return addHeapObject(__wbg_call_10738551fb4d99e4_target.call(getObject(arg0), getObject(arg1)));
+    } catch (e) {
+        const view = getUint32Memory();
+        view[exnptr / 4] = 1;
+        view[exnptr / 4 + 1] = addHeapObject(e);
+
+    }
+}
+
+export function __wbindgen_object_clone_ref(idx) {
+    // If this object is on the stack promote it to the heap.
+    if ((idx & 1) === 1) return addHeapObject(getObject(idx));
+
+    // Otherwise if the object is on the heap just bump the
+    // refcount and move on
+    const val = slab[idx >> 1];
+    val.cnt += 1;
+    return idx;
+}
 
 function dropRef(idx) {
 
@@ -49,38 +134,34 @@ export function __wbindgen_object_drop_ref(i) {
     dropRef(i);
 }
 
-function addHeapObject(obj) {
-    if (slab_next === slab.length) slab.push(slab.length + 1);
-    const idx = slab_next;
-    const next = slab[idx];
-
-    slab_next = next;
-
-    slab[idx] = { obj, cnt: 1 };
-    return idx << 1;
-}
-
-const lTextDecoder = typeof TextDecoder === 'undefined' ? require('util').TextDecoder : TextDecoder;
-
-let cachedTextDecoder = new lTextDecoder('utf-8');
-
-let cachegetUint8Memory = null;
-function getUint8Memory() {
-    if (cachegetUint8Memory === null || cachegetUint8Memory.buffer !== wasm.memory.buffer) {
-        cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
-    }
-    return cachegetUint8Memory;
-}
-
-function getStringFromWasm(ptr, len) {
-    return cachedTextDecoder.decode(getUint8Memory().subarray(ptr, ptr + len));
-}
-
-export function __wbindgen_string_new(p, l) {
-    return addHeapObject(getStringFromWasm(p, l));
-}
-
 export function __wbindgen_number_new(i) {
     return addHeapObject(i);
+}
+
+export const __wbindgen_cb_forget = dropRef;
+
+export function __wbindgen_closure_wrapper29(a, b, fi, di, _ignored) {
+    const f = wasm.__wbg_function_table.get(fi);
+    const d = wasm.__wbg_function_table.get(di);
+    const cb = function() {
+        this.cnt++;
+        try {
+            return f(this.a, b);
+
+        } finally {
+            if (this.cnt-- == 1) d(this.a, b);
+
+        }
+
+    };
+    cb.a = a;
+    cb.cnt = 1;
+    let real = cb.bind(cb);
+    real.original = cb;
+    return addHeapObject(real);
+}
+
+export function __wbindgen_throw(ptr, len) {
+    throw new Error(getStringFromWasm(ptr, len));
 }
 

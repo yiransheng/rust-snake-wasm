@@ -5,6 +5,9 @@ extern crate web_sys;
 extern crate rand;
 
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+
+use std::mem;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -22,12 +25,13 @@ use world::{Direction, World, WorldBuilder};
 pub fn main() {
     use web_sys::console;
 
-    let world = WorldBuilder::new()
-        .width(32)
-        .height(16)
-        .set_snake(1, 1)
-        .extend(Direction::West)
-        .extend(Direction::West)
-        .extend(Direction::West)
-        .build_with_seed::<SmallRng>([123; 16]);
+    let window = web_sys::window().expect("should have a window in this context");
+
+    let cb = Closure::wrap(Box::new(move || {
+        console::log_1(&1.into());
+    }) as Box<Fn()>);
+
+    let c = window.request_animation_frame(cb.as_ref().unchecked_ref());
+
+    cb.forget();
 }
