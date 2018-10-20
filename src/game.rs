@@ -32,13 +32,25 @@ impl<R: Rng> GameState for World<R> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum GameStatus {
     Idle,
     Ready,
     Running,
     Rendering,
     GameOver,
+}
+
+impl ::std::fmt::Display for GameStatus {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match self {
+            GameStatus::Idle => write!(f, "Idle"),
+            GameStatus::Ready => write!(f, "Ready"),
+            GameStatus::Running => write!(f, "Running"),
+            GameStatus::Rendering => write!(f, "Rendering"),
+            GameStatus::GameOver => write!(f, "GameOver"),
+        }
+    }
 }
 
 impl GameStatus {
@@ -66,46 +78,60 @@ impl GameStatus {
     }
 }
 
-struct RunGameState<G, R> {
+pub trait Renderer {
+    type UpdateEff;
+
+    fn render<F>(&mut self, mut eff: Self::UpdateEff, callback: F)
+    where
+        F: Fn();
+}
+
+pub struct RunGame<G, R> {
     status: Rc<Cell<GameStatus>>,
     renderer: R,
     game: G,
 }
 
-pub trait Renderer<G: GameState> {
-    fn render<F>(&mut self, eff: G::UpdateEff, callback: F)
-    where
-        F: FnMut();
-}
+impl<G: GameState, R: Renderer<UpdateEff = G::UpdateEff>> RunGame<G, R> {
+    pub fn new(state: G, renderer: R) -> Self {
+        RunGame {
+            status: Rc::new(Cell::new(GameStatus::Idle)),
+            game: state,
+            renderer,
+        }
+    }
 
-impl<G: GameState, R: Renderer<G>> RunGameState<G, R> {
-    fn on_enter_frame(&mut self) {
-        let next_status = match self.status.get() {
+    pub fn start(&mut self) {
+        self.status.set(GameStatus::Ready)
+    }
+
+    pub fn on_enter_frame(&mut self) {
+        match self.status.get() {
             s @ GameStatus::Ready => {
                 let eff = self.game.mount();
                 self.queue_render(eff);
-
-                s.render_started()
             }
             s @ GameStatus::Running => match self.game.update() {
                 Ok(eff) => {
                     self.queue_render(eff);
-
-                    s.render_started()
                 }
-                Err(_) => GameStatus::GameOver,
+                Err(_) => {
+                    web_sys::console::log_1(&"Is Over".into());
+                    self.status.set(GameStatus::GameOver);
+                }
             },
-            s @ _ => s,
+            _ => {}
         };
-
-        self.status.set(next_status);
     }
 
     fn queue_render(&mut self, eff: G::UpdateEff) {
+        self.status.set(GameStatus::Rendering);
+
         let status = self.status.clone();
 
         self.renderer.render(eff, || {
-            let next_status = status.get().render_done();
+            let current = status.get();
+            let next_status = current.render_done();
             status.set(next_status);
         });
     }

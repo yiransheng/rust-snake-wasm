@@ -9,7 +9,7 @@ pub enum Patch<T> {
 }
 
 impl<T: Copy> Patch<T> {
-    fn iter(&mut self) -> PatchIter<T> {
+    pub fn iter(&mut self) -> PatchIter<T> {
         match *self {
             Patch::Empty => PatchIter::Empty,
             Patch::One(x) => PatchIter::One(x),
