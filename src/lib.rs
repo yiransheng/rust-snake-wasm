@@ -30,7 +30,7 @@ extern "C" {
     type GameLoop;
 
     #[wasm_bindgen(constructor)]
-    fn new(run: &JsValue) -> GameLoop;
+    fn new(run: &Closure<FnMut(f64)>) -> GameLoop;
 
     #[wasm_bindgen(method)]
     fn start(this: &GameLoop) -> bool;
@@ -60,11 +60,11 @@ pub fn main() {
 
     game.borrow_mut().start();
 
-    let run = Closure::wrap(Box::new(move || {
+    let run = Closure::wrap(Box::new(move |_n: f64| {
         game.borrow_mut().on_enter_frame();
-    }) as Box<Fn()>);
+    }) as Box<FnMut(_)>);
 
-    let gameLoop = GameLoop::new(run.as_ref().unchecked_ref());
+    let gameLoop = GameLoop::new(&run);
 
     gameLoop.start();
 

@@ -268,6 +268,10 @@ export function __wbindgen_string_new(p, l) {
     return addHeapObject(getStringFromWasm(p, l));
 }
 
+export function __wbindgen_number_new(i) {
+    return addHeapObject(i);
+}
+
 export function __wbindgen_number_get(n, invalid) {
     let obj = getObject(n);
     if (typeof(obj) === 'number') return obj;
@@ -318,15 +322,18 @@ export function __wbindgen_string_get(i, len_ptr) {
 
 export const __wbindgen_cb_forget = dropRef;
 
-export function __wbindgen_closure_wrapper227(a, b, fi, di, _ignored) {
+export function __wbindgen_closure_wrapper231(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
-    const cb = function() {
+    const cb = function(arg0) {
         this.cnt++;
+        let a = this.a;
+        this.a = 0;
         try {
-            return f(this.a, b);
+            return f(a, b, arg0);
 
         } finally {
+            this.a = a;
             if (this.cnt-- == 1) d(this.a, b);
 
         }
