@@ -21,6 +21,20 @@ mod world;
 
 use world::{Direction, World, WorldBuilder};
 
+#[wasm_bindgen(module = "./game-loop")]
+extern "C" {
+    type GameLoop;
+
+    #[wasm_bindgen(constructor)]
+    fn new(run: &JsValue) -> GameLoop;
+
+    #[wasm_bindgen(method)]
+    fn start(this: &GameLoop) -> bool;
+
+    #[wasm_bindgen(method)]
+    fn stop(this: &GameLoop) -> bool;
+}
+
 #[wasm_bindgen]
 pub fn main() {
     use web_sys::console;
@@ -31,7 +45,9 @@ pub fn main() {
         console::log_1(&1.into());
     }) as Box<Fn()>);
 
-    let c = window.request_animation_frame(cb.as_ref().unchecked_ref());
+    let c = GameLoop::new(cb.as_ref().unchecked_ref());
+
+    c.start();
 
     cb.forget();
 }

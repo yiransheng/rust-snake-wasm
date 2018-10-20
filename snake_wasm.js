@@ -1,12 +1,6 @@
 /* tslint:disable */
 import * as wasm from './snake_wasm_bg';
-
-/**
-* @returns {void}
-*/
-export function main() {
-    return wasm.main();
-}
+import { GameLoop } from './game-loop';
 
 const stack = [];
 
@@ -23,22 +17,6 @@ function getObject(idx) {
     }
 }
 
-export function __widl_instanceof_Window(idx) {
-    return getObject(idx) instanceof Window ? 1 : 0;
-}
-
-const __widl_f_request_animation_frame_Window_target = function(x0) {
-    return this.requestAnimationFrame(x0);
-};
-
-let cachegetUint32Memory = null;
-function getUint32Memory() {
-    if (cachegetUint32Memory === null || cachegetUint32Memory.buffer !== wasm.memory.buffer) {
-        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
-    }
-    return cachegetUint32Memory;
-}
-
 let slab_next = slab.length;
 
 function addHeapObject(obj) {
@@ -52,15 +30,26 @@ function addHeapObject(obj) {
     return idx << 1;
 }
 
-export function __widl_f_request_animation_frame_Window(arg0, arg1, exnptr) {
-    try {
-        return __widl_f_request_animation_frame_Window_target.call(getObject(arg0), getObject(arg1));
-    } catch (e) {
-        const view = getUint32Memory();
-        view[exnptr / 4] = 1;
-        view[exnptr / 4 + 1] = addHeapObject(e);
+export function __wbg_new_7733f9a79f16fcf3(arg0) {
+    return addHeapObject(new GameLoop(getObject(arg0)));
+}
 
-    }
+const __wbg_start_d02e687b09c37f58_target = GameLoop.prototype.start || function() {
+    throw new Error(`wasm-bindgen: GameLoop.prototype.start does not exist`);
+};
+
+export function __wbg_start_d02e687b09c37f58(arg0) {
+    return __wbg_start_d02e687b09c37f58_target.call(getObject(arg0)) ? 1 : 0;
+}
+/**
+* @returns {void}
+*/
+export function main() {
+    return wasm.main();
+}
+
+export function __widl_instanceof_Window(idx) {
+    return getObject(idx) instanceof Window ? 1 : 0;
 }
 
 const __widl_f_log_1__target = console.log;
@@ -93,6 +82,14 @@ export function __wbg_newnoargs_f3005d02efe69623(arg0, arg1) {
 const __wbg_call_10738551fb4d99e4_target = Function.prototype.call || function() {
     throw new Error(`wasm-bindgen: Function.prototype.call does not exist`);
 };
+
+let cachegetUint32Memory = null;
+function getUint32Memory() {
+    if (cachegetUint32Memory === null || cachegetUint32Memory.buffer !== wasm.memory.buffer) {
+        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachegetUint32Memory;
+}
 
 export function __wbg_call_10738551fb4d99e4(arg0, arg1, exnptr) {
     try {
@@ -140,7 +137,7 @@ export function __wbindgen_number_new(i) {
 
 export const __wbindgen_cb_forget = dropRef;
 
-export function __wbindgen_closure_wrapper29(a, b, fi, di, _ignored) {
+export function __wbindgen_closure_wrapper42(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
     const cb = function() {
