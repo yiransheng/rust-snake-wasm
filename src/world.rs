@@ -4,24 +4,24 @@ use std::convert::{From, Into};
 use data::{Block, Coordinate, Direction, Tile};
 use system::{GameSystem, Generation, RenderQueue, RenderSink, RenderUnit};
 
-struct Board {
+struct Grid {
     blocks: Vec<Block>,
     width: i32,
     height: i32,
 }
 
-// game states
+// Storage of game data
 
-impl Board {
+impl Grid {
     fn empty(width: u32, height: u32) -> Self {
-        Board {
+        Grid {
             width: width as i32,
             height: height as i32,
             blocks: vec![Block::empty(); (width * height) as usize],
         }
     }
     fn clear(&mut self) {
-        self.blocks.iter_mut().map(|x| *x = Block::empty());
+        self.blocks.iter_mut().for_each(|x| *x = Block::empty());
     }
     fn get_block(&self, coord: Coordinate) -> Block {
         let Coordinate { x, y } = coord;
@@ -101,7 +101,7 @@ impl Board {
 }
 
 pub struct World<R> {
-    board: Board,
+    grid: Grid,
     head: Coordinate,
     tail: Coordinate,
     rng: R,
@@ -154,7 +154,7 @@ impl<R: Rng> World<R> {
 
     pub fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
-        let head_dir: Direction = self.board.get_block(head).into();
+        let head_dir: Direction = self.grid.get_block(head).into();
 
         if dir != head_dir.opposite() {
             self.set_block(head, dir);
@@ -163,7 +163,7 @@ impl<R: Rng> World<R> {
 
     fn reset(&mut self) {
         self.generation = Generation::default();
-        self.board.clear();
+        self.grid.clear();
 
         let initial_snake = ::std::mem::replace(&mut self.initial_snake, vec![]);
         let n = initial_snake.len();
@@ -210,9 +210,9 @@ impl<R: Rng> World<R> {
 
         self.generation += 1;
 
-        let head_dir: Direction = self.board.get_block(self.head).into();
+        let head_dir: Direction = self.grid.get_block(self.head).into();
         let next_head = self.head.move_towards(head_dir);
-        let next_head_tile: Tile = self.board.get_block(next_head).into();
+        let next_head_tile: Tile = self.grid.get_block(next_head).into();
 
         match next_head_tile {
             Tile::OutOfBound => Err(UpdateError::OutOfBound),
@@ -221,7 +221,7 @@ impl<R: Rng> World<R> {
                 self.head = next_head;
 
                 let tail = self.tail;
-                let tail_dir = self.board.get_block(self.tail);
+                let tail_dir = self.grid.get_block(self.tail);
                 let next_tail = self.tail.move_towards(tail_dir.into());
 
                 self.tail = next_tail;
@@ -252,14 +252,14 @@ impl<R: Rng> World<R> {
     }
 
     fn set_world_size_update<Q: RenderSink<WorldUpdate>>(&self, q: &mut Q) {
-        let update = WorldUpdate::SetWorldSize(self.board.width as u32, self.board.height as u32);
+        let update = WorldUpdate::SetWorldSize(self.grid.width as u32, self.grid.height as u32);
         q.push(self.mk_render_unit(Coordinate { x: 0, y: 0 }, update));
     }
 
     fn spawn_food_and_push_update<Q: RenderSink<WorldUpdate>>(&mut self, q: &mut Q) {
         loop {
-            let coord = self.board.random_coordinate(&mut self.rng);
-            let current_tile = Tile::from(self.board.get_block(coord));
+            let coord = self.grid.random_coordinate(&mut self.rng);
+            let current_tile = Tile::from(self.grid.get_block(coord));
 
             if current_tile == Tile::Empty {
                 self.set_block_and_push_update(coord, Block::food(), q);
@@ -275,7 +275,7 @@ impl<R: Rng> World<R> {
         q: &mut Q,
     ) {
         let b: Block = b.into();
-        let prev_block = self.board.get_block(coord);
+        let prev_block = self.grid.get_block(coord);
 
         self.set_block(coord, b);
 
@@ -288,23 +288,23 @@ impl<R: Rng> World<R> {
 
     #[inline]
     fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
-        self.board.set_block(coord, b.into());
+        self.grid.set_block(coord, b.into());
     }
 
     #[inline]
     fn iter_snake(&self) -> SnakeIter {
-        SnakeIter::new(&self.board, self.tail)
+        SnakeIter::new(&self.grid, self.tail)
     }
 }
 
 pub struct SnakeIter<'a> {
-    board: &'a Board,
+    grid: &'a Grid,
     at: Coordinate,
 }
 
 impl<'a> SnakeIter<'a> {
-    fn new(board: &'a Board, at: Coordinate) -> Self {
-        SnakeIter { board, at }
+    fn new(grid: &'a Grid, at: Coordinate) -> Self {
+        SnakeIter { grid, at }
     }
 }
 
@@ -312,7 +312,7 @@ impl<'a> Iterator for SnakeIter<'a> {
     type Item = (Coordinate, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let block = self.board.get_block(self.at);
+        let block = self.grid.get_block(self.at);
 
         if block.is_snake() {
             let dir = Direction::from(block);
@@ -348,11 +348,11 @@ impl WorldBuilder {
         self
     }
     pub fn set_snake(self, x: i32, y: i32) -> SnakeBuilder {
-        let board = Board::empty(self.width, self.height);
+        let grid = Grid::empty(self.width, self.height);
         let tail = Coordinate::new(x, y);
 
         SnakeBuilder {
-            board,
+            grid,
             head: tail,
             tail,
             next_head: tail,
@@ -362,7 +362,7 @@ impl WorldBuilder {
 }
 
 pub struct SnakeBuilder {
-    board: Board,
+    grid: Grid,
     head: Coordinate,
     next_head: Coordinate,
     tail: Coordinate,
@@ -372,11 +372,11 @@ pub struct SnakeBuilder {
 impl SnakeBuilder {
     pub fn extend(mut self, dir: Direction) -> Self {
         let next_head = self.next_head;
-        let next_head_block = self.board.get_block(next_head);
+        let next_head_block = self.grid.get_block(next_head);
 
         assert!(Tile::from(next_head_block) == Tile::Empty);
 
-        if !self.board.set_block(next_head, Block::from(dir)) {
+        if !self.grid.set_block(next_head, Block::from(dir)) {
             return self;
         }
 
@@ -399,13 +399,13 @@ impl SnakeBuilder {
         let initial_snake: Vec<(Coordinate, Direction)>;
 
         {
-            let iter = SnakeIter::new(&self.board, self.tail);
+            let iter = SnakeIter::new(&self.grid, self.tail);
 
             initial_snake = iter.collect();
         }
 
         World {
-            board: self.board,
+            grid: self.grid,
             tail: self.tail,
             head: self.head,
             initial_snake,
@@ -453,26 +453,26 @@ mod test_utils {
             let height = s.lines().count() as u32;
             let width = s.lines().next().unwrap().chars().count() as u32;
 
-            let mut board = Board::empty(width, height);
+            let mut grid = Grid::empty(width, height);
 
             for (y, line) in s.lines().enumerate() {
                 for (x, c) in line.chars().enumerate() {
-                    board.set_block(Coordinate::from_usize(x, y), c.into());
+                    grid.set_block(Coordinate::from_usize(x, y), c.into());
                 }
             }
 
             let mut head = Coordinate { x: 0, y: 0 };
             let mut tail = Coordinate { x: 0, y: 0 };
 
-            for x in 0..board.width {
-                for y in 0..board.height {
+            for x in 0..grid.width {
+                for y in 0..grid.height {
                     let coord = Coordinate { x, y };
-                    let b = board.get_block(coord);
+                    let b = grid.get_block(coord);
                     if b.is_snake() {
-                        if board.get_prev_snake_block(coord).is_none() {
+                        if grid.get_prev_snake_block(coord).is_none() {
                             tail = coord;
                         }
-                        if board.get_next_snake_block(coord).is_none() {
+                        if grid.get_next_snake_block(coord).is_none() {
                             head = coord;
                         }
                     }
@@ -482,13 +482,13 @@ mod test_utils {
             let initial_snake: Vec<(Coordinate, Direction)>;
 
             {
-                let iter = SnakeIter::new(&board, tail);
+                let iter = SnakeIter::new(&grid, tail);
 
                 initial_snake = iter.collect();
             }
 
             World {
-                board,
+                grid,
                 head,
                 tail,
                 // reading from ascii can skip initial setup
@@ -502,10 +502,10 @@ mod test_utils {
 
     impl<R> fmt::Display for World<R> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            for y in 0..self.board.height {
-                for x in 0..self.board.width {
+            for y in 0..self.grid.height {
+                for x in 0..self.grid.width {
                     let coord = Coordinate { x, y };
-                    write!(f, "{}", self.board.get_block(coord))?;
+                    write!(f, "{}", self.grid.get_block(coord))?;
                 }
                 write!(f, "\n")?;
             }
