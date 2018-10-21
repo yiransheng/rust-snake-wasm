@@ -241,18 +241,6 @@ export function __widl_f_document_Window(arg0) {
 
 }
 
-const __widl_f_log_1__target = console.log;
-
-export function __widl_f_log_1_(arg0) {
-    __widl_f_log_1__target(getObject(arg0));
-}
-
-const __widl_f_log_2__target = console.log;
-
-export function __widl_f_log_2_(arg0, arg1) {
-    __widl_f_log_2__target(getObject(arg0), getObject(arg1));
-}
-
 export function __wbg_newnoargs_f3005d02efe69623(arg0, arg1) {
     let varg0 = getStringFromWasm(arg0, arg1);
     return addHeapObject(new Function(varg0));
@@ -306,10 +294,6 @@ export function __wbindgen_string_new(p, l) {
     return addHeapObject(getStringFromWasm(p, l));
 }
 
-export function __wbindgen_number_new(i) {
-    return addHeapObject(i);
-}
-
 export function __wbindgen_number_get(n, invalid) {
     let obj = getObject(n);
     if (typeof(obj) === 'number') return obj;
@@ -360,7 +344,7 @@ export function __wbindgen_string_get(i, len_ptr) {
 
 export const __wbindgen_cb_forget = dropRef;
 
-export function __wbindgen_closure_wrapper256(a, b, fi, di, _ignored) {
+export function __wbindgen_closure_wrapper251(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
     const cb = function(arg0) {

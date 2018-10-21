@@ -1,5 +1,3 @@
-#![feature(pin)]
-
 extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
@@ -8,15 +6,10 @@ extern crate either;
 extern crate rand;
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 use either::Either;
-use std::cell::RefCell;
-use std::mem;
-use std::rc::Rc;
 
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 
 mod data;
 mod render;
@@ -26,7 +19,7 @@ mod world;
 use data::Direction;
 use render::CanvasRenderer;
 use system::{GameInput, GameSystem, RenderQueue, StartGame};
-use world::{World, WorldBuilder, WorldUpdate};
+use world::WorldBuilder;
 
 #[wasm_bindgen(module = "./game-loop")]
 extern "C" {
@@ -42,16 +35,8 @@ extern "C" {
     fn stop(this: &GameLoop) -> bool;
 }
 
-struct Useme {
-    c: f64,
-}
-
 #[wasm_bindgen]
 pub fn main() {
-    use web_sys::console;
-
-    let window = web_sys::window().expect("should have a window in this context");
-
     let world = WorldBuilder::new()
         .width(64)
         .height(48)
@@ -69,12 +54,11 @@ pub fn main() {
         let cmd: GameInput<Option<Direction>>;
         if n % 60.0 == 1.0 {
             cmd = Either::Left(StartGame);
-            web_sys::console::log_1(&n.into());
         } else {
             cmd = Either::Right(None);
         }
 
-        game.tick(cmd, &mut render_queue);
+        let _ = game.tick(cmd, &mut render_queue);
     }) as Box<FnMut(_)>);
 
     let game_loop = GameLoop::new(&each_tick);

@@ -19,11 +19,13 @@ features = [
   'CanvasRenderingContext2d',
   'Document',
   'Element',
-  'EventTarget',
+  'Node',
   'HtmlCanvasElement',
   'HtmlElement',
-  'MouseEvent',
-  'Node',
   'Window',
 ]
 
+
+[profile.release]
+lto = true
+opt-level = 3
