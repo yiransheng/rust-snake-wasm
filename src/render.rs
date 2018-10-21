@@ -1,4 +1,11 @@
 use std::cell::Cell;
+use std::cmp;
+use std::collections::VecDeque;
+use std::iter::FromIterator;
+use std::marker::Pinned;
+use std::ops::Range;
+use std::pin::Pin;
+use std::ptr::NonNull;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -71,5 +78,143 @@ impl Renderer for CanvasRenderer {
         }
 
         callback();
+    }
+}
+
+type Generation = u32;
+
+#[derive(Debug, Copy, Clone)]
+pub struct RenderUnit<P> {
+    generation: Generation,
+    duration: u8,
+    at: Coordinate,
+    payload: P,
+}
+
+impl<P> Ord for RenderUnit<P> {
+    fn cmp(&self, other: &RenderUnit<P>) -> ::std::cmp::Ordering {
+        self.generation.cmp(&other.generation)
+    }
+}
+impl<P> PartialOrd for RenderUnit<P> {
+    fn partial_cmp(&self, other: &RenderUnit<P>) -> Option<::std::cmp::Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+impl<P> PartialEq for RenderUnit<P> {
+    fn eq(&self, other: &RenderUnit<P>) -> bool {
+        self.generation == other.generation
+    }
+}
+impl<P> Eq for RenderUnit<P> {}
+
+pub trait DrawTile {
+    const TILE_SIZE: f64;
+
+    // normalized_progress: [0, 1]
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, normalized_progress: f64);
+}
+
+impl<P> RenderUnit<P>
+where
+    P: DrawTile,
+{
+    fn draw_frame(&self, gc: &CanvasRenderingContext2d, frame: u8) -> bool {
+        let Coordinate { x, y } = self.at;
+        let inner_x = (x as f64) * P::TILE_SIZE;
+        let inner_y = (y as f64) * P::TILE_SIZE;
+
+        if frame < self.duration {
+            let normalized_progress = (frame as f64) / (self.duration as f64);
+
+            self.payload
+                .draw_tile(gc, inner_x, inner_y, normalized_progress);
+
+            true
+        } else {
+            false
+        }
+    }
+}
+
+pub struct RenderQueue<P> {
+    queue: Vec<RenderUnit<P>>,
+}
+
+impl<P> RenderQueue<P> {
+    pub fn push(&mut self, unit: RenderUnit<P>) {
+        self.queue.push(unit);
+    }
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    fn clear(&mut self) {
+        self.queue.clear();
+    }
+
+    fn first_generation(&self) -> Option<Generation> {
+        self.queue.first().map(|u| u.generation)
+    }
+    fn last_generation(&self) -> Option<Generation> {
+        self.queue.last().map(|u| u.generation)
+    }
+
+    fn slice_for_generation(&self, g: Generation) -> &[RenderUnit<P>] {
+        // queue typically too small to warrant fancy things like binary search
+        let rng = self
+            .queue
+            .iter()
+            .enumerate()
+            .skip_while(|(_, u)| u.generation < g)
+            .take_while(|(_, u)| u.generation == g)
+            .map(|(i, _)| i)
+            .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1));
+
+        &self.queue[rng]
+    }
+}
+
+pub struct MyRenderer {
+    generation: Generation,
+    current_frame: u8,
+    canvas: HtmlCanvasElement,
+    gc: CanvasRenderingContext2d,
+}
+
+impl MyRenderer {
+    fn tick<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+        let mut generation_completed = false;
+
+        {
+            let render_units = q.slice_for_generation(self.generation);
+
+            if render_units.is_empty() {
+                generation_completed = true;
+            } else {
+                for ru in render_units {
+                    if ru.draw_frame(&self.gc, self.current_frame) {
+                        generation_completed = false;
+                    }
+                }
+            }
+        }
+
+        if generation_completed {
+            self.complete_generation(q);
+        } else {
+            self.current_frame += 1;
+        }
+    }
+
+    fn complete_generation<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+        self.generation += 1;
+        self.current_frame = 0;
+
+        if let Some(last_gen) = q.last_generation() {
+            if last_gen < self.generation {
+                q.clear();
+            }
+        }
     }
 }

@@ -1,3 +1,5 @@
+#![feature(pin)]
+
 extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
@@ -15,15 +17,13 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 mod data;
-mod game;
 #[macro_use]
 mod patch;
-mod render;
+mod system;
 mod world;
 
-use game::{GameState, Renderer, RunGame};
-use render::CanvasRenderer;
-use world::{Direction, World, WorldBuilder};
+use data::Direction;
+use world::{World, WorldBuilder};
 
 #[wasm_bindgen(module = "./game-loop")]
 extern "C" {
@@ -37,6 +37,10 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     fn stop(this: &GameLoop) -> bool;
+}
+
+struct Useme {
+    c: f64,
 }
 
 #[wasm_bindgen]
@@ -54,19 +58,4 @@ pub fn main() {
         .extend(Direction::East)
         .extend(Direction::East)
         .build_with_seed::<SmallRng>([123; 16]);
-
-    let renderer = CanvasRenderer::new();
-    let game = Rc::new(RefCell::new(RunGame::new(world, renderer)));
-
-    game.borrow_mut().start();
-
-    let run = Closure::wrap(Box::new(move |_n: f64| {
-        game.borrow_mut().on_enter_frame();
-    }) as Box<FnMut(_)>);
-
-    let gameLoop = GameLoop::new(&run);
-
-    gameLoop.start();
-
-    run.forget();
 }

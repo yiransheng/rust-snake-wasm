@@ -1,8 +1,8 @@
 use rand::{Rng, SeedableRng};
 use std::convert::{From, Into};
 
-pub use data::{Block, Coordinate, Direction, Tile};
-use patch::Patch;
+use data::{Block, Coordinate, Direction, Tile};
+use system::{GameSystem, Generation, RenderQueue, RenderUnit};
 
 struct Board {
     blocks: Vec<Block>,
@@ -19,6 +19,9 @@ impl Board {
             height: height as i32,
             blocks: vec![Block::empty(); (width * height) as usize],
         }
+    }
+    fn clear(&mut self) {
+        self.blocks.iter_mut().map(|x| *x = Block::empty());
     }
     fn get_block(&self, coord: Coordinate) -> Block {
         let Coordinate { x, y } = coord;
@@ -95,6 +98,9 @@ pub struct World<R> {
     head: Coordinate,
     tail: Coordinate,
     rng: R,
+    generation: Generation,
+
+    initial_snake: Vec<(Coordinate, Direction)>,
 }
 
 pub enum UpdateError {
@@ -104,14 +110,32 @@ pub enum UpdateError {
 
 // side effect of a world update
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum WorldUpdateEff {
-    SetBlock { at: Coordinate, block: Block },
-    Clear { at: Coordinate, prev_block: Block },
+pub enum WorldUpdate {
+    SetBlock { block: Block },
+    Clear { prev_block: Block },
 }
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
+impl<R: Rng> GameSystem for World<R> {
+    type Msg = WorldUpdate;
+    type GameOver = UpdateError;
+
+    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
+        self.setup(q);
+    }
+    fn tick(&mut self, q: &mut RenderQueue<Self::Msg>) -> Result<()> {
+        self.tick_update(q)
+    }
+
+    fn tear_down(&mut self) {
+        self.reset();
+    }
+}
+
 impl<R: Rng> World<R> {
+    const RENDER_TICKS: u8 = 5;
+
     pub fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
         let head_dir: Direction = self.board.get_block(head).into();
@@ -120,25 +144,68 @@ impl<R: Rng> World<R> {
             self.set_block(head, dir);
         }
     }
-    pub fn init_update(&mut self) -> Patch<WorldUpdateEff> {
-        let mut updates = self
-            .iter_snake()
-            .map(|(at, dir)| WorldUpdateEff::SetBlock {
-                at,
-                block: dir.into(),
-            })
-            .collect::<Vec<_>>();
+
+    fn reset(&mut self) {
+        self.generation = Generation::default();
+        self.board.clear();
+
+        let initial_snake = ::std::mem::replace(&mut self.initial_snake, vec![]);
+        let n = initial_snake.len();
+
+        for (i, (at, dir)) in initial_snake.iter().enumerate() {
+            if i == 0 {
+                self.tail = *at;
+            }
+            if i == n - 1 {
+                self.head = *at;
+            }
+            self.set_block(*at, *dir);
+        }
+
+        self.initial_snake = initial_snake;
+    }
+
+    #[inline]
+    fn setup(&mut self, render_queue: &mut RenderQueue<WorldUpdate>) {
+        use self::WorldUpdate::*;
+
+        if self.generation > Generation::default() {
+            self.reset();
+        }
+
+        let mut gen = Generation::default();
+
+        for (at, dir) in self.iter_snake() {
+            let update =
+                RenderUnit::new(gen, Self::RENDER_TICKS, at, SetBlock { block: dir.into() });
+            gen += 1;
+
+            render_queue.push(update);
+        }
+
+        self.generation = gen;
 
         let food_coord = self.spawn_food();
 
-        updates.push(WorldUpdateEff::SetBlock {
-            at: food_coord,
-            block: Block::food(),
-        });
-
-        Patch::Many(updates)
+        render_queue.push(self.mk_render_unit(
+            food_coord,
+            SetBlock {
+                block: Block::food(),
+            },
+        ));
     }
-    pub fn tick_update(&mut self) -> Result<Patch<WorldUpdateEff>> {
+    #[inline]
+    fn tick_update(&mut self, render_queue: &mut RenderQueue<WorldUpdate>) -> Result<()> {
+        use self::WorldUpdate::*;
+
+        debug_assert!(self.generation > Generation::default());
+
+        if !render_queue.is_empty() {
+            return Ok(());
+        }
+
+        self.generation += 1;
+
         let head_dir: Direction = self.board.get_block(self.head).into();
         let next_head = self.head.move_towards(head_dir);
         let next_head_tile: Tile = self.board.get_block(next_head).into();
@@ -157,33 +224,46 @@ impl<R: Rng> World<R> {
                 self.set_block(tail, Block::empty());
                 self.tail = next_tail;
 
-                Ok(patch!(
-                    WorldUpdateEff::SetBlock {
-                        at: next_head,
+                render_queue.push(self.mk_render_unit(
+                    next_tail,
+                    SetBlock {
                         block: head_dir.into(),
                     },
-                    WorldUpdateEff::Clear {
-                        at: tail,
-                        prev_block: tail_dir.into()
-                    }
-                ))
+                ));
+                render_queue.push(self.mk_render_unit(
+                    tail,
+                    Clear {
+                        prev_block: tail_dir.into(),
+                    },
+                ));
+
+                Ok(())
             }
             Tile::Food => {
                 self.set_block(next_head, head_dir);
                 let food_coord = self.spawn_food();
 
-                Ok(patch!(
-                    WorldUpdateEff::SetBlock {
-                        at: next_head,
+                render_queue.push(self.mk_render_unit(
+                    next_head,
+                    SetBlock {
                         block: head_dir.into(),
                     },
-                    WorldUpdateEff::SetBlock {
-                        at: food_coord,
+                ));
+                render_queue.push(self.mk_render_unit(
+                    food_coord,
+                    SetBlock {
                         block: Block::food(),
-                    }
-                ))
+                    },
+                ));
+
+                Ok(())
             }
         }
+    }
+
+    #[inline(always)]
+    fn mk_render_unit(&self, at: Coordinate, u: WorldUpdate) -> RenderUnit<WorldUpdate> {
+        RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
     }
 
     fn spawn_food(&mut self) -> Coordinate {
@@ -257,7 +337,7 @@ impl WorldBuilder {
         self.height = height;
         self
     }
-    pub fn set_snake(&self, x: i32, y: i32) -> SnakeBuilder {
+    pub fn set_snake(self, x: i32, y: i32) -> SnakeBuilder {
         let board = Board::empty(self.width, self.height);
         let tail = Coordinate::new(x, y);
 
@@ -306,10 +386,19 @@ impl SnakeBuilder {
 
         let rng = R::from_seed(seed);
 
+        let iter = SnakeIter {
+            board: &self.board,
+            at: self.tail,
+        };
+
+        let initial_snake: Vec<_> = iter.collect();
+
         World {
             board: self.board,
             tail: self.tail,
             head: self.head,
+            initial_snake,
+            generation: Generation::default(),
             rng,
         }
     }
@@ -379,11 +468,21 @@ mod test_utils {
                 }
             }
 
+            let iter = SnakeIter {
+                board: &board,
+                at: tail,
+            };
+
+            let initial_snake: Vec<_> = iter.collect();
+
             World {
                 board,
                 head,
                 tail,
+                generation: Generation::default(),
                 rng: SmallRng::from_seed([0; 16]),
+
+                initial_snake,
             }
         }
     }
@@ -416,22 +515,26 @@ oooooooooo
 oooo*ooooo
 oooooooooo";
         let mut world = World::from_ascii(world);
+        let mut q = RenderQueue::new();
 
-        // east 3
-        world.tick_update();
-        world.tick_update();
-        world.tick_update();
-        // turn south
-        world.set_direction(Direction::South);
-        // south 2
-        world.tick_update();
-        world.tick_update();
-        // turn west
-        world.set_direction(Direction::West);
-        // west 3
-        world.tick_update();
-        world.tick_update();
-        world.tick_update();
+        {
+            let mut update = |n: usize, dir: Direction| {
+                for _ in 0..n {
+                    world.tick_update(&mut q);
+                    q.clear();
+                }
+                world.set_direction(dir);
+            };
+
+            // east 3
+            // turn south
+            update(3, Direction::South);
+            // south 2
+            // turn west
+            update(2, Direction::West);
+            // west 3
+            update(3, Direction::West);
+        }
 
         // ate food -> new food deterministically
         // generated from known seed
