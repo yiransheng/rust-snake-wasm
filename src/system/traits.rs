@@ -1,5 +1,5 @@
 use super::{RenderQueue, RenderUnit};
-use either::Either;
+pub use either::Either;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 fn _assert_is_object_safe(_: &dyn GameSystem<Msg = (), InputCmd = (), GameOver = ()>) {}
@@ -79,6 +79,8 @@ pub trait GameSystem {
     }
 }
 
+pub enum Never {}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum PlayState {
     NotRunning,
@@ -88,14 +90,18 @@ enum PlayState {
 
 pub struct StartGame;
 
+impl<T> Into<GameInput<T>> for StartGame {
+    fn into(self) -> GameInput<T> {
+        Either::Left(self)
+    }
+}
+
 pub type GameInput<T> = Either<StartGame, T>;
 
 pub struct WithPlayState<S> {
     state: PlayState,
     system: S,
 }
-
-pub enum Never {}
 
 impl<M, I, S> GameSystem for WithPlayState<S>
 where

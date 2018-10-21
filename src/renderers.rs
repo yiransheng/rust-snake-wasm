@@ -28,9 +28,7 @@ impl GameSystem for CanvasRenderer {
         Ok(())
     }
 
-    fn tear_down(&mut self) {
-        self.clear();
-    }
+    fn tear_down(&mut self) {}
 }
 
 impl CanvasRenderer {
@@ -150,7 +148,9 @@ impl DrawTile for WorldUpdate {
                     let r = r_full * normalized_progress;
                     gc.save();
                     gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
+                    gc.begin_path();
                     let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
+                    gc.close_path();
                     gc.fill();
                     gc.restore();
                 }

@@ -52,6 +52,14 @@ export function __widl_instanceof_CanvasRenderingContext2D(idx) {
     return getObject(idx) instanceof CanvasRenderingContext2D ? 1 : 0;
 }
 
+const __widl_f_begin_path_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.beginPath || function() {
+    throw new Error(`wasm-bindgen: CanvasRenderingContext2D.prototype.beginPath does not exist`);
+};
+
+export function __widl_f_begin_path_CanvasRenderingContext2D(arg0) {
+    __widl_f_begin_path_CanvasRenderingContext2D_target.call(getObject(arg0));
+}
+
 const __widl_f_fill_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.fill || function() {
     throw new Error(`wasm-bindgen: CanvasRenderingContext2D.prototype.fill does not exist`);
 };
@@ -98,6 +106,14 @@ export function __widl_f_arc_CanvasRenderingContext2D(arg0, arg1, arg2, arg3, ar
         view[exnptr / 4 + 1] = addHeapObject(e);
 
     }
+}
+
+const __widl_f_close_path_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.closePath || function() {
+    throw new Error(`wasm-bindgen: CanvasRenderingContext2D.prototype.closePath does not exist`);
+};
+
+export function __widl_f_close_path_CanvasRenderingContext2D(arg0) {
+    __widl_f_close_path_CanvasRenderingContext2D_target.call(getObject(arg0));
 }
 
 const __widl_f_clear_rect_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.clearRect || function() {
@@ -264,6 +280,12 @@ export function __widl_f_document_Window(arg0) {
 
 }
 
+const __widl_f_log_1__target = console.log;
+
+export function __widl_f_log_1_(arg0) {
+    __widl_f_log_1__target(getObject(arg0));
+}
+
 export function __wbg_newnoargs_f3005d02efe69623(arg0, arg1) {
     let varg0 = getStringFromWasm(arg0, arg1);
     return addHeapObject(new Function(varg0));
@@ -367,15 +389,15 @@ export function __wbindgen_string_get(i, len_ptr) {
 
 export const __wbindgen_cb_forget = dropRef;
 
-export function __wbindgen_closure_wrapper252(a, b, fi, di, _ignored) {
+export function __wbindgen_closure_wrapper284(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
-    const cb = function(arg0) {
+    const cb = function(arg0, arg1) {
         this.cnt++;
         let a = this.a;
         this.a = 0;
         try {
-            return f(a, b, arg0);
+            return f(a, b, arg0, arg1);
 
         } finally {
             this.a = a;

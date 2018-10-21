@@ -1,10 +1,14 @@
-let i = 0;
-
 export class GameLoop {
   constructor(fn) {
     this._onEnterFrame = fn;
     this._rafId = null;
+    this._unlistens = [];
+    this._key = 0;
+    this._framePressed = 0;
+
     this._run = this._run.bind(this);
+    this._onKeyDown = this._onKeyDown.bind(this);
+    this._onKeyUp = this._onKeyUp.bind(this);
   }
 
   get running() {
@@ -14,6 +18,8 @@ export class GameLoop {
   start() {
     if (!this.running) {
       this._rafId = window.requestAnimationFrame(this._run);
+      this._unlistens.push(addEventLisitener("keydown", this._onKeyDown));
+      this._unlistens.push(addEventLisitener("keyup", this._onKeyUp));
       return true;
     }
 
@@ -23,6 +29,8 @@ export class GameLoop {
     if (this.running) {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
+      this._unlistens.forEach(f => f());
+      this._unlistens.length = 0;
       return true;
     }
 
@@ -31,8 +39,45 @@ export class GameLoop {
 
   _run() {
     if (this.running) {
-      this._onEnterFrame(i++);
-      this._rafId = window.requestAnimationFrame(this._run);
+      if (this._key !== 0) {
+        this._framePressed = Math.min(255, this._framePressed + 1);
+      }
+
+      try {
+        this._onEnterFrame(this._key, this._framePressed);
+        this._rafId = window.requestAnimationFrame(this._run);
+      } catch (err) {
+        this.stop();
+      }
     }
   }
+
+  _onKeyDown(e) {
+    switch (e.keyCode) {
+      case 13:
+      //case 27:
+      case 37:
+      case 38:
+      case 39:
+      case 40:
+        if (this._key !== e.keyCode) {
+          this._key = e.keyCode;
+          this._framePressed = 0;
+        }
+        break;
+      default:
+    }
+  }
+  _onKeyUp() {
+    this._key = 0;
+    this._framePressed = 0;
+  }
+}
+
+function addEventLisitener(event, listener) {
+  document.addEventListener(event, listener);
+
+  return function unlisten() {
+    document.removeEventListener(event, listener);
+  };
 }

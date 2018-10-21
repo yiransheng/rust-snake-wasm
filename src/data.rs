@@ -1,7 +1,7 @@
 use std::convert::{From, Into};
 use std::mem::transmute;
 
-use rand::{Rng, SeedableRng};
+use system::{Either, GameInput, StartGame};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Direction {
@@ -21,6 +21,8 @@ impl Direction {
         }
     }
 }
+
+pub struct Key(u8);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Tile {
@@ -136,6 +138,36 @@ impl From<Block> for Direction {
 impl From<Direction> for Block {
     fn from(dir: Direction) -> Self {
         Block { raw: (dir as u8) }
+    }
+}
+
+impl From<u8> for Key {
+    fn from(code: u8) -> Key {
+        Key(code)
+    }
+}
+
+impl From<Key> for Option<Direction> {
+    fn from(k: Key) -> Option<Direction> {
+        match k.0 {
+            37 => Some(Direction::West),
+            38 => Some(Direction::North),
+            39 => Some(Direction::East),
+            40 => Some(Direction::South),
+            _ => None,
+        }
+    }
+}
+
+impl<T> Into<GameInput<T>> for Key
+where
+    T: From<Key>,
+{
+    fn into(self) -> GameInput<T> {
+        match self.0 {
+            13 => Either::Left(StartGame),
+            _ => Either::Right(T::from(self)),
+        }
     }
 }
 

@@ -7,8 +7,6 @@ extern crate rand;
 
 use wasm_bindgen::prelude::*;
 
-use either::Either;
-
 use rand::rngs::SmallRng;
 
 mod data;
@@ -16,9 +14,12 @@ mod renderers;
 mod system;
 mod world;
 
-use data::Direction;
+#[macro_use]
+mod console_log;
+
+use data::{Direction, Key};
 use renderers::CanvasRenderer;
-use system::{GameInput, GameSystem, RenderQueue, StartGame};
+use system::{GameInput, GameSystem, RenderQueue};
 use world::WorldBuilder;
 
 #[wasm_bindgen(module = "./game-loop")]
@@ -26,7 +27,7 @@ extern "C" {
     type GameLoop;
 
     #[wasm_bindgen(constructor)]
-    fn new(run: &Closure<FnMut(f64)>) -> GameLoop;
+    fn new(run: &Closure<FnMut(u8, u8)>) -> GameLoop;
 
     #[wasm_bindgen(method)]
     fn start(this: &GameLoop) -> bool;
@@ -38,8 +39,8 @@ extern "C" {
 #[wasm_bindgen]
 pub fn main() {
     let world = WorldBuilder::new()
-        .width(64)
-        .height(48)
+        .width(50)
+        .height(20)
         .set_snake(1, 1)
         .extend(Direction::East)
         .extend(Direction::East)
@@ -50,16 +51,11 @@ pub fn main() {
     let mut game = world.with_renderer(CanvasRenderer::new()).with_play_state();
     let mut render_queue = RenderQueue::new();
 
-    let each_tick = Closure::wrap(Box::new(move |n: f64| {
-        let cmd: GameInput<Option<Direction>>;
-        if n % 60.0 == 1.0 {
-            cmd = Either::Left(StartGame);
-        } else {
-            cmd = Either::Right(None);
-        }
-
+    let each_tick = Closure::wrap(Box::new(move |key: u8, _n: u8| {
+        let key = Key::from(key);
+        let cmd: GameInput<Option<Direction>> = key.into();
         let _ = game.tick(cmd, &mut render_queue);
-    }) as Box<FnMut(_)>);
+    }) as Box<FnMut(_, _)>);
 
     let game_loop = GameLoop::new(&each_tick);
 

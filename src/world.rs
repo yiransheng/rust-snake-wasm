@@ -233,6 +233,8 @@ impl<R: Rng> World<R> {
                 Ok(())
             }
             Tile::Food => {
+                self.head = next_head;
+
                 self.set_block_and_push_update(next_head, head_dir, render_queue);
                 self.spawn_food_and_push_update(render_queue);
 
