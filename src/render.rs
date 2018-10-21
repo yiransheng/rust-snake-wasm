@@ -1,28 +1,92 @@
-use std::cell::Cell;
-use std::cmp;
-use std::collections::VecDeque;
-use std::iter::FromIterator;
-use std::marker::Pinned;
-use std::ops::Range;
-use std::pin::Pin;
-use std::ptr::NonNull;
-use std::rc::Rc;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use data::{Coordinate, Direction, Tile};
-use game::Renderer;
-use patch::*;
-use world::WorldUpdateEff;
+use data::Direction;
+use system::{DrawTile, GameSystem, Generation, Never, RenderQueue};
+use world::WorldUpdate;
 
-pub struct CanvasRenderer {
-    canvas: HtmlCanvasElement,
-    context: CanvasRenderingContext2d,
+impl DrawTile for WorldUpdate {
+    const TILE_SIZE: f64 = 10.0;
+
+    fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
+        match self {
+            WorldUpdate::SetWorldSize(w, h) => {
+                let size = Self::TILE_SIZE as u32;
+                canvas.set_width(*w * size);
+                canvas.set_height(*h * size);
+            }
+            _ => {}
+        }
+    }
+
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, _x: f64, _y: f64, normalized_progress: f64) {
+        match self {
+            WorldUpdate::SetWorldSize(_, _) => {}
+            WorldUpdate::SetBlock { block } => {
+                if block.is_snake() {
+                    let ts = Self::TILE_SIZE;
+                    let dir = Direction::from(*block);
+                    let length = normalized_progress * ts;
+                    match dir {
+                        Direction::North => gc.fill_rect(0.0, ts - length, ts, length),
+                        Direction::South => gc.fill_rect(0.0, 0.0, ts, length),
+                        Direction::East => gc.fill_rect(0.0, 0.0, length, ts),
+                        Direction::West => gc.fill_rect(ts - length, 0.0, length, ts),
+                    }
+                } else if block.is_food() {
+                    gc.save();
+                    gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
+                    gc.fill_rect(0.0, 0.0, Self::TILE_SIZE, Self::TILE_SIZE);
+                    gc.restore();
+                }
+            }
+            WorldUpdate::Clear { prev_block } => {
+                let ts = Self::TILE_SIZE;
+                if prev_block.is_snake() {
+                    let dir = Direction::from(*prev_block);
+                    let length = normalized_progress * ts;
+                    match dir {
+                        Direction::North => gc.clear_rect(0.0, ts - length, ts, length),
+                        Direction::South => gc.clear_rect(0.0, 0.0, ts, length),
+                        Direction::East => gc.clear_rect(0.0, 0.0, length, ts),
+                        Direction::West => gc.clear_rect(ts - length, 0.0, length, ts),
+                    }
+                } else if normalized_progress == 1.0 {
+                    gc.clear_rect(0.0, 0.0, ts, ts);
+                }
+            }
+        }
+    }
 }
 
-impl CanvasRenderer {
+pub struct MyRenderer {
+    generation: Generation,
+    current_frame: u8,
+    canvas: HtmlCanvasElement,
+    gc: CanvasRenderingContext2d,
+}
+
+impl GameSystem for MyRenderer {
+    type Msg = WorldUpdate;
+    type InputCmd = Never;
+    type GameOver = Never;
+
+    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
+        self.setup(q);
+    }
+    fn tick(&mut self, _cmd: Never, q: &mut RenderQueue<Self::Msg>) -> Result<(), Never> {
+        self.render(q);
+
+        Ok(())
+    }
+
+    fn tear_down(&mut self) {
+        self.clear();
+    }
+}
+
+impl MyRenderer {
     pub fn new() -> Self {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document
@@ -34,8 +98,6 @@ impl CanvasRenderer {
         (document.body().unwrap().as_ref() as &web_sys::Node)
             .append_child(canvas.as_ref() as &web_sys::Node)
             .unwrap();
-        canvas.set_width(640);
-        canvas.set_height(480);
 
         let context = canvas
             .get_context("2d")
@@ -46,144 +108,32 @@ impl CanvasRenderer {
 
         context.set_fill_style(&"rgba(0, 0, 0, 1)".into());
 
-        CanvasRenderer { canvas, context }
-    }
-}
-
-impl Renderer for CanvasRenderer {
-    type UpdateEff = Patch<WorldUpdateEff>;
-
-    fn render<F>(&mut self, mut eff: Self::UpdateEff, callback: F)
-    where
-        F: Fn(),
-    {
-        let w = 64;
-        let h = 48;
-
-        web_sys::console::log_1(&"Render".into());
-
-        for update in eff.iter() {
-            match update {
-                WorldUpdateEff::SetBlock { at, block } => {
-                    let x = (at.x * 10) as f64;
-                    let y = (at.y * 10) as f64;
-                    self.context.fill_rect(x, y, 10.0, 10.0);
-                }
-                WorldUpdateEff::Clear { at, prev_block } => {
-                    let x = (at.x * 10) as f64;
-                    let y = (at.y * 10) as f64;
-                    self.context.clear_rect(x, y, 10.0, 10.0);
-                }
-            }
-        }
-
-        callback();
-    }
-}
-
-type Generation = u32;
-
-#[derive(Debug, Copy, Clone)]
-pub struct RenderUnit<P> {
-    generation: Generation,
-    duration: u8,
-    at: Coordinate,
-    payload: P,
-}
-
-impl<P> Ord for RenderUnit<P> {
-    fn cmp(&self, other: &RenderUnit<P>) -> ::std::cmp::Ordering {
-        self.generation.cmp(&other.generation)
-    }
-}
-impl<P> PartialOrd for RenderUnit<P> {
-    fn partial_cmp(&self, other: &RenderUnit<P>) -> Option<::std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-impl<P> PartialEq for RenderUnit<P> {
-    fn eq(&self, other: &RenderUnit<P>) -> bool {
-        self.generation == other.generation
-    }
-}
-impl<P> Eq for RenderUnit<P> {}
-
-pub trait DrawTile {
-    const TILE_SIZE: f64;
-
-    // normalized_progress: [0, 1]
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, normalized_progress: f64);
-}
-
-impl<P> RenderUnit<P>
-where
-    P: DrawTile,
-{
-    fn draw_frame(&self, gc: &CanvasRenderingContext2d, frame: u8) -> bool {
-        let Coordinate { x, y } = self.at;
-        let inner_x = (x as f64) * P::TILE_SIZE;
-        let inner_y = (y as f64) * P::TILE_SIZE;
-
-        if frame < self.duration {
-            let normalized_progress = (frame as f64) / (self.duration as f64);
-
-            self.payload
-                .draw_tile(gc, inner_x, inner_y, normalized_progress);
-
-            true
-        } else {
-            false
+        MyRenderer {
+            canvas,
+            gc: context,
+            generation: Generation::default(),
+            current_frame: 0,
         }
     }
-}
+    fn setup<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+        let gen_0 = Generation::default();
+        let render_units = q.slice_for_generation(gen_0);
+        for ru in render_units {
+            ru.prepare_canvas(&self.canvas);
+        }
+        self.clear();
 
-pub struct RenderQueue<P> {
-    queue: Vec<RenderUnit<P>>,
-}
-
-impl<P> RenderQueue<P> {
-    pub fn push(&mut self, unit: RenderUnit<P>) {
-        self.queue.push(unit);
+        self.generation = gen_0;
     }
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
+    fn clear(&self) {
+        self.gc.clear_rect(
+            0.0,
+            0.0,
+            self.canvas.width() as f64,
+            self.canvas.height() as f64,
+        );
     }
-
-    fn clear(&mut self) {
-        self.queue.clear();
-    }
-
-    fn first_generation(&self) -> Option<Generation> {
-        self.queue.first().map(|u| u.generation)
-    }
-    fn last_generation(&self) -> Option<Generation> {
-        self.queue.last().map(|u| u.generation)
-    }
-
-    fn slice_for_generation(&self, g: Generation) -> &[RenderUnit<P>] {
-        // queue typically too small to warrant fancy things like binary search
-        let rng = self
-            .queue
-            .iter()
-            .enumerate()
-            .skip_while(|(_, u)| u.generation < g)
-            .take_while(|(_, u)| u.generation == g)
-            .map(|(i, _)| i)
-            .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1));
-
-        &self.queue[rng]
-    }
-}
-
-pub struct MyRenderer {
-    generation: Generation,
-    current_frame: u8,
-    canvas: HtmlCanvasElement,
-    gc: CanvasRenderingContext2d,
-}
-
-impl MyRenderer {
-    fn tick<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+    fn render<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
         let mut generation_completed = false;
 
         {

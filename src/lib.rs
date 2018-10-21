@@ -18,8 +18,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 mod data;
-#[macro_use]
-mod patch;
+mod render;
 mod system;
 mod world;
 

@@ -113,6 +113,7 @@ pub enum UpdateError {
 pub enum WorldUpdate {
     SetBlock { block: Block },
     Clear { prev_block: Block },
+    SetWorldSize(u32, u32),
 }
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
@@ -180,6 +181,7 @@ impl<R: Rng> World<R> {
         if self.generation > Generation::default() {
             self.reset();
         }
+        self.set_world_size_update(render_queue);
 
         let mut gen = Generation::default();
 
@@ -233,6 +235,11 @@ impl<R: Rng> World<R> {
     #[inline(always)]
     fn mk_render_unit(&self, at: Coordinate, u: WorldUpdate) -> RenderUnit<WorldUpdate> {
         RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
+    }
+
+    fn set_world_size_update<Q: RenderSink<WorldUpdate>>(&self, q: &mut Q) {
+        let update = WorldUpdate::SetWorldSize(self.board.width as u32, self.board.height as u32);
+        q.push(self.mk_render_unit(Coordinate { x: 0, y: 0 }, update));
     }
 
     fn spawn_food_and_push_update<Q: RenderSink<WorldUpdate>>(&mut self, q: &mut Q) {

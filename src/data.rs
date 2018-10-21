@@ -36,26 +36,37 @@ pub struct Block {
 }
 
 impl Block {
+    #[inline]
     pub fn empty() -> Self {
         Block { raw: 0 }
     }
+    #[inline]
     pub fn food() -> Self {
         // second bit on: food
         Block { raw: 0b0100_0000 }
     }
+    #[inline]
     pub fn out_of_bound() -> Self {
         // first two bits off: OOB
         Block { raw: 0b0011_1111 }
     }
+    #[inline]
     pub fn from_raw(raw: u8) -> Self {
         Block { raw }
     }
+    #[inline]
     pub fn into_raw(self) -> u8 {
         self.raw
     }
+    #[inline]
     pub fn is_empty(self) -> bool {
         self.raw == 0
     }
+    #[inline]
+    pub fn is_food(self) -> bool {
+        self.raw == 0
+    }
+    #[inline]
     pub fn is_snake(self) -> bool {
         // first bit is 1
         self.raw & 0b1000_0000 != 0

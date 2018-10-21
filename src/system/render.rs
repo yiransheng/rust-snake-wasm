@@ -63,6 +63,9 @@ where
             false
         }
     }
+    pub fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
+        self.payload.prepare_canvas(canvas);
+    }
 }
 
 pub struct RenderQueue<P> {

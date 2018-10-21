@@ -1,6 +1,8 @@
 use super::{RenderQueue, RenderUnit};
 use either::Either;
-use web_sys::CanvasRenderingContext2d;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
+fn _assert_is_object_safe(_: &dyn GameSystem<Msg = (), InputCmd = (), GameOver = ()>) {}
 
 pub trait RenderSink<T> {
     fn is_ready(&self) -> bool;
@@ -13,9 +15,32 @@ pub trait DrawTile {
 
     // normalized_progress: [0, 1]
     fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, normalized_progress: f64);
+
+    fn prepare_canvas(&self, canvas: &HtmlCanvasElement);
+
+    fn instant(self) -> InstantDraw<Self>
+    where
+        Self: Sized,
+    {
+        InstantDraw { inner: self }
+    }
 }
 
-fn _assert_is_object_safe(_: &dyn GameSystem<Msg = (), InputCmd = (), GameOver = ()>) {}
+pub struct InstantDraw<D> {
+    inner: D,
+}
+impl<D: DrawTile> DrawTile for InstantDraw<D> {
+    const TILE_SIZE: f64 = D::TILE_SIZE;
+
+    fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
+        self.inner.prepare_canvas(canvas);
+    }
+
+    #[inline]
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, _normalized_progress: f64) {
+        self.inner.draw_tile(gc, x, y, 1.0);
+    }
+}
 
 pub trait GameSystem {
     type Msg;
