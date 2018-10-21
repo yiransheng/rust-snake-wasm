@@ -4,6 +4,7 @@ extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
+extern crate either;
 extern crate rand;
 
 use wasm_bindgen::prelude::*;

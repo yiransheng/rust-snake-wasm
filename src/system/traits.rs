@@ -1,4 +1,5 @@
 use super::{RenderQueue, RenderUnit};
+use either::Either;
 use web_sys::CanvasRenderingContext2d;
 
 pub trait RenderSink<T> {
@@ -30,4 +31,85 @@ pub trait GameSystem {
     ) -> Result<(), Self::GameOver>;
 
     fn tear_down(&mut self);
+
+    fn with_play_state(self) -> WithPlayState<Self>
+    where
+        Self: Sized,
+    {
+        WithPlayState {
+            state: PlayState::NotRunning,
+            system: self,
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+enum PlayState {
+    NotRunning,
+    Running,
+    Over,
+}
+
+pub struct StartGame;
+
+pub type GameInput<T> = Either<StartGame, T>;
+
+pub struct WithPlayState<S> {
+    state: PlayState,
+    system: S,
+}
+
+pub enum Never {}
+
+impl<M, I, S> GameSystem for WithPlayState<S>
+where
+    S: GameSystem<Msg = M, InputCmd = I, GameOver = ()>,
+{
+    type Msg = M;
+    type InputCmd = GameInput<I>;
+    type GameOver = Never;
+
+    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
+        match self.state {
+            PlayState::Running => {}
+            _ => {
+                self.system.start_up(q);
+            }
+        }
+    }
+
+    fn tick(
+        &mut self,
+        cmd: Self::InputCmd,
+        q: &mut RenderQueue<Self::Msg>,
+    ) -> Result<(), Self::GameOver> {
+        match self.state {
+            PlayState::Running => match cmd {
+                Either::Right(cmd) => {
+                    if let Err(_) = self.system.tick(cmd, q) {
+                        self.tear_down();
+                    }
+                    Ok(())
+                }
+                Either::Left(StartGame) => Ok(()),
+            },
+            _ => match cmd {
+                Either::Left(StartGame) => {
+                    self.start_up(q);
+                    Ok(())
+                }
+                Either::Right(_) => Ok(()),
+            },
+        }
+    }
+
+    fn tear_down(&mut self) {
+        match self.state {
+            PlayState::Over => {}
+            _ => {
+                self.state = PlayState::Over;
+                self.system.tear_down();
+            }
+        }
+    }
 }
