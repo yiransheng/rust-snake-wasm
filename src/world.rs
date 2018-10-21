@@ -120,12 +120,20 @@ type Result<T> = ::std::result::Result<T, UpdateError>;
 impl<R: Rng> GameSystem for World<R> {
     type Msg = WorldUpdate;
     type GameOver = UpdateError;
+    type InputCmd = Option<Direction>;
 
     fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
         self.setup(q);
     }
-    fn tick(&mut self, q: &mut RenderQueue<Self::Msg>) -> Result<()> {
-        self.tick_update(q)
+    fn tick(&mut self, cmd: Option<Direction>, q: &mut RenderQueue<Self::Msg>) -> Result<()> {
+        if let Some(dir) = cmd {
+            self.set_direction(dir);
+        }
+        if q.is_ready() {
+            self.step_update(q)
+        } else {
+            Ok(())
+        }
     }
 
     fn tear_down(&mut self) {
@@ -188,12 +196,8 @@ impl<R: Rng> World<R> {
         self.spawn_food_and_push_update(render_queue);
     }
     #[inline]
-    fn tick_update<Q: RenderSink<WorldUpdate>>(&mut self, render_queue: &mut Q) -> Result<()> {
+    fn step_update<Q: RenderSink<WorldUpdate>>(&mut self, render_queue: &mut Q) -> Result<()> {
         debug_assert!(self.generation > Generation::default());
-
-        if !render_queue.is_empty() {
-            return Ok(());
-        }
 
         self.generation += 1;
 
@@ -503,7 +507,7 @@ mod tests {
     }
 
     impl<T> RenderSink<T> for MockSink<T> {
-        fn is_empty(&self) -> bool {
+        fn is_ready(&self) -> bool {
             true
         }
         fn push(&mut self, x: RenderUnit<T>) {}
@@ -525,7 +529,7 @@ oooooooooo";
         {
             let mut update = |n: usize, dir: Direction| {
                 for _ in 0..n {
-                    world.tick_update(&mut q);
+                    world.step_update(&mut q);
                 }
                 world.set_direction(dir);
             };

@@ -110,7 +110,7 @@ impl<P> RenderQueue<P> {
 }
 
 impl<P> RenderSink<P> for RenderQueue<P> {
-    fn is_empty(&self) -> bool {
+    fn is_ready(&self) -> bool {
         self.queue.is_empty()
     }
 
