@@ -109,7 +109,9 @@ where
         match self.state {
             PlayState::Running => {}
             _ => {
+                web_sys::console::log_1(&"start game".into());
                 self.system.start_up(q);
+                self.state = PlayState::Running;
             }
         }
     }
@@ -162,7 +164,7 @@ where
 {
     type Msg = M;
     type InputCmd = I;
-    type GameOver = E;
+    type GameOver = ();
 
     fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
         self.system.start_up(q);
@@ -174,7 +176,7 @@ where
         cmd: Self::InputCmd,
         q: &mut RenderQueue<Self::Msg>,
     ) -> Result<(), Self::GameOver> {
-        self.system.tick(cmd, q)?;
+        self.system.tick(cmd, q).map_err(|_| ())?;
 
         match self.renderer.tick((), q) {
             Ok(_) => Ok(()),

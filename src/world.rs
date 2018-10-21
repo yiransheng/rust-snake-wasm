@@ -127,10 +127,12 @@ impl<R: Rng> GameSystem for World<R> {
         self.setup(q);
     }
     fn tick(&mut self, cmd: Option<Direction>, q: &mut RenderQueue<Self::Msg>) -> Result<()> {
+        web_sys::console::log_1(&"world_tick".into());
         if let Some(dir) = cmd {
             self.set_direction(dir);
         }
         if q.is_ready() {
+            web_sys::console::log_1(&"state_change".into());
             self.step_update(q)
         } else {
             Ok(())
@@ -507,6 +509,7 @@ mod test_utils {
 mod tests {
     use super::test_utils::*;
     use super::*;
+    use rand::rngs::SmallRng;
     use std::marker::PhantomData;
 
     struct MockSink<T> {
@@ -564,4 +567,24 @@ oooooooooo";
         assert_eq!(final_state, &world.to_string());
     }
 
+    #[test]
+    fn test_builder() {
+        let world = WorldBuilder::new()
+            .width(10)
+            .height(5)
+            .set_snake(1, 1)
+            .extend(Direction::East)
+            .extend(Direction::East)
+            .extend(Direction::East)
+            .extend(Direction::East)
+            .build_with_seed::<SmallRng>([123; 16]);
+        let final_state = "..........
+.oooo.....
+..........
+..........
+..........
+";
+
+        assert_eq!(final_state, &world.to_string());
+    }
 }

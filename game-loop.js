@@ -1,3 +1,5 @@
+let i = 0;
+
 export class GameLoop {
   constructor(fn) {
     this._onEnterFrame = fn;
@@ -29,7 +31,7 @@ export class GameLoop {
 
   _run() {
     if (this.running) {
-      this._onEnterFrame();
+      this._onEnterFrame(i++);
       this._rafId = window.requestAnimationFrame(this._run);
     }
   }
