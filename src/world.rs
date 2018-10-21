@@ -293,16 +293,19 @@ impl<R: Rng> World<R> {
 
     #[inline]
     fn iter_snake(&self) -> SnakeIter {
-        SnakeIter {
-            board: &self.board,
-            at: self.tail,
-        }
+        SnakeIter::new(&self.board, self.tail)
     }
 }
 
 pub struct SnakeIter<'a> {
     board: &'a Board,
     at: Coordinate,
+}
+
+impl<'a> SnakeIter<'a> {
+    fn new(board: &'a Board, at: Coordinate) -> Self {
+        SnakeIter { board, at }
+    }
 }
 
 impl<'a> Iterator for SnakeIter<'a> {
@@ -396,10 +399,7 @@ impl SnakeBuilder {
         let initial_snake: Vec<(Coordinate, Direction)>;
 
         {
-            let iter = SnakeIter {
-                board: &self.board,
-                at: self.tail,
-            };
+            let iter = SnakeIter::new(&self.board, self.tail);
 
             initial_snake = iter.collect();
         }
@@ -482,10 +482,7 @@ mod test_utils {
             let initial_snake: Vec<(Coordinate, Direction)>;
 
             {
-                let iter = SnakeIter {
-                    board: &board,
-                    at: tail,
-                };
+                let iter = SnakeIter::new(&board, tail);
 
                 initial_snake = iter.collect();
             }
