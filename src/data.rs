@@ -22,7 +22,31 @@ impl Direction {
     }
 }
 
-pub struct Key(u8);
+#[derive(Debug, Copy, Clone)]
+pub struct Key {
+    code: u8,
+    pressed_frames: u8,
+}
+
+impl Key {
+    pub fn new(code: u8, pressed_frames: u8) -> Self {
+        Key {
+            code,
+            pressed_frames,
+        }
+    }
+
+    pub fn modify_animation_frame(self, base_frame: u8) -> u8 {
+        let frames_to_reduce = self.pressed_frames / 10;
+        let min_frame = 1;
+
+        if frames_to_reduce >= base_frame + min_frame {
+            min_frame
+        } else {
+            base_frame - frames_to_reduce
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Tile {
@@ -143,13 +167,16 @@ impl From<Direction> for Block {
 
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
-        Key(code)
+        Key {
+            code,
+            pressed_frames: 1,
+        }
     }
 }
 
 impl From<Key> for Option<Direction> {
     fn from(k: Key) -> Option<Direction> {
-        match k.0 {
+        match k.code {
             37 => Some(Direction::West),
             38 => Some(Direction::North),
             39 => Some(Direction::East),
@@ -164,7 +191,7 @@ where
     T: From<Key>,
 {
     fn into(self) -> GameInput<T> {
-        match self.0 {
+        match self.code {
             13 => Either::Left(StartGame),
             _ => Either::Right(T::from(self)),
         }

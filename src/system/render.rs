@@ -24,6 +24,12 @@ impl<P> RenderUnit<P> {
             payload,
         }
     }
+    pub fn modify_duration<F>(&mut self, f: F)
+    where
+        F: Fn(u8) -> u8,
+    {
+        self.duration = f(self.duration)
+    }
 }
 
 impl<P> Ord for RenderUnit<P> {
@@ -98,6 +104,9 @@ impl<P> RenderQueue<P> {
     }
     pub fn clear(&mut self) {
         self.queue.clear();
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut RenderUnit<P>> {
+        self.queue.iter_mut()
     }
 
     pub fn first_generation(&self) -> Option<Generation> {

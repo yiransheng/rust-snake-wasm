@@ -1,7 +1,7 @@
 use rand::{Rng, SeedableRng};
 use std::convert::{From, Into};
 
-use data::{Block, Coordinate, Direction, Tile};
+use data::{Block, Coordinate, Direction, Key, Tile};
 use system::{GameSystem, Generation, RenderQueue, RenderSink, RenderUnit};
 
 struct Grid {

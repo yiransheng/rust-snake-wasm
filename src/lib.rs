@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use rand::rngs::SmallRng;
 
+mod acceleration;
 mod data;
 mod renderers;
 mod system;
@@ -17,6 +18,7 @@ mod world;
 #[macro_use]
 mod console_log;
 
+use acceleration::AccMiddleware;
 use data::{Direction, Key};
 use renderers::CanvasRenderer;
 use system::{GameInput, GameSystem, RenderQueue};
@@ -48,12 +50,17 @@ pub fn main() {
         .extend(Direction::East)
         .build_with_seed::<SmallRng>([123; 16]);
 
-    let mut game = world.with_renderer(CanvasRenderer::new()).with_play_state();
+    let mut game = world
+        .map_input(|key: Key| key.into())
+        .with_renderer(CanvasRenderer::new())
+        .with_middlewares()
+        .add_middleware(Box::new(AccMiddleware::new()))
+        .with_play_state();
     let mut render_queue = RenderQueue::new();
 
-    let each_tick = Closure::wrap(Box::new(move |key: u8, _n: u8| {
-        let key = Key::from(key);
-        let cmd: GameInput<Option<Direction>> = key.into();
+    let each_tick = Closure::wrap(Box::new(move |key: u8, frame_pressed: u8| {
+        let key = Key::new(key, frame_pressed);
+        let cmd: GameInput<Key> = key.into();
         let _ = game.tick(cmd, &mut render_queue);
     }) as Box<FnMut(_, _)>);
 
