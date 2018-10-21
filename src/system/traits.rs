@@ -57,6 +57,17 @@ pub trait GameSystem {
 
     fn tear_down(&mut self);
 
+    fn with_renderer<R>(self, r: R) -> WithRenderer<Self, R>
+    where
+        Self: Sized,
+        R: GameSystem<Msg = Self::Msg, InputCmd = (), GameOver = Never>,
+    {
+        WithRenderer {
+            system: self,
+            renderer: r,
+        }
+    }
+
     fn with_play_state(self) -> WithPlayState<Self>
     where
         Self: Sized,
@@ -136,5 +147,43 @@ where
                 self.system.tear_down();
             }
         }
+    }
+}
+
+pub struct WithRenderer<S, R> {
+    system: S,
+    renderer: R,
+}
+
+impl<M, I, E, S, R> GameSystem for WithRenderer<S, R>
+where
+    S: GameSystem<Msg = M, InputCmd = I, GameOver = E>,
+    R: GameSystem<Msg = M, InputCmd = (), GameOver = Never>,
+{
+    type Msg = M;
+    type InputCmd = I;
+    type GameOver = E;
+
+    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
+        self.system.start_up(q);
+        self.renderer.start_up(q);
+    }
+
+    fn tick(
+        &mut self,
+        cmd: Self::InputCmd,
+        q: &mut RenderQueue<Self::Msg>,
+    ) -> Result<(), Self::GameOver> {
+        self.system.tick(cmd, q)?;
+
+        match self.renderer.tick((), q) {
+            Ok(_) => Ok(()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn tear_down(&mut self) {
+        self.renderer.tear_down();
+        self.system.tear_down();
     }
 }

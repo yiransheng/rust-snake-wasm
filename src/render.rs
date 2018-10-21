@@ -6,76 +6,22 @@ use data::Direction;
 use system::{DrawTile, GameSystem, Generation, Never, RenderQueue};
 use world::WorldUpdate;
 
-impl DrawTile for WorldUpdate {
-    const TILE_SIZE: f64 = 10.0;
-
-    fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
-        match self {
-            WorldUpdate::SetWorldSize(w, h) => {
-                let size = Self::TILE_SIZE as u32;
-                canvas.set_width(*w * size);
-                canvas.set_height(*h * size);
-            }
-            _ => {}
-        }
-    }
-
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, _x: f64, _y: f64, normalized_progress: f64) {
-        match self {
-            WorldUpdate::SetWorldSize(_, _) => {}
-            WorldUpdate::SetBlock { block } => {
-                if block.is_snake() {
-                    let ts = Self::TILE_SIZE;
-                    let dir = Direction::from(*block);
-                    let length = normalized_progress * ts;
-                    match dir {
-                        Direction::North => gc.fill_rect(0.0, ts - length, ts, length),
-                        Direction::South => gc.fill_rect(0.0, 0.0, ts, length),
-                        Direction::East => gc.fill_rect(0.0, 0.0, length, ts),
-                        Direction::West => gc.fill_rect(ts - length, 0.0, length, ts),
-                    }
-                } else if block.is_food() {
-                    gc.save();
-                    gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
-                    gc.fill_rect(0.0, 0.0, Self::TILE_SIZE, Self::TILE_SIZE);
-                    gc.restore();
-                }
-            }
-            WorldUpdate::Clear { prev_block } => {
-                let ts = Self::TILE_SIZE;
-                if prev_block.is_snake() {
-                    let dir = Direction::from(*prev_block);
-                    let length = normalized_progress * ts;
-                    match dir {
-                        Direction::North => gc.clear_rect(0.0, ts - length, ts, length),
-                        Direction::South => gc.clear_rect(0.0, 0.0, ts, length),
-                        Direction::East => gc.clear_rect(0.0, 0.0, length, ts),
-                        Direction::West => gc.clear_rect(ts - length, 0.0, length, ts),
-                    }
-                } else if normalized_progress == 1.0 {
-                    gc.clear_rect(0.0, 0.0, ts, ts);
-                }
-            }
-        }
-    }
-}
-
-pub struct MyRenderer {
+pub struct CanvasRenderer {
     generation: Generation,
     current_frame: u8,
     canvas: HtmlCanvasElement,
     gc: CanvasRenderingContext2d,
 }
 
-impl GameSystem for MyRenderer {
+impl GameSystem for CanvasRenderer {
     type Msg = WorldUpdate;
-    type InputCmd = Never;
+    type InputCmd = ();
     type GameOver = Never;
 
     fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
         self.setup(q);
     }
-    fn tick(&mut self, _cmd: Never, q: &mut RenderQueue<Self::Msg>) -> Result<(), Never> {
+    fn tick(&mut self, _cmd: (), q: &mut RenderQueue<Self::Msg>) -> Result<(), Never> {
         self.render(q);
 
         Ok(())
@@ -86,7 +32,7 @@ impl GameSystem for MyRenderer {
     }
 }
 
-impl MyRenderer {
+impl CanvasRenderer {
     pub fn new() -> Self {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document
@@ -108,7 +54,7 @@ impl MyRenderer {
 
         context.set_fill_style(&"rgba(0, 0, 0, 1)".into());
 
-        MyRenderer {
+        CanvasRenderer {
             canvas,
             gc: context,
             generation: Generation::default(),
@@ -164,6 +110,60 @@ impl MyRenderer {
         if let Some(last_gen) = q.last_generation() {
             if last_gen < self.generation {
                 q.clear();
+            }
+        }
+    }
+}
+
+impl DrawTile for WorldUpdate {
+    const TILE_SIZE: f64 = 10.0;
+
+    fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
+        match self {
+            WorldUpdate::SetWorldSize(w, h) => {
+                let size = Self::TILE_SIZE as u32;
+                canvas.set_width(*w * size);
+                canvas.set_height(*h * size);
+            }
+            _ => {}
+        }
+    }
+
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, _x: f64, _y: f64, normalized_progress: f64) {
+        match self {
+            WorldUpdate::SetWorldSize(_, _) => {}
+            WorldUpdate::SetBlock { block } => {
+                if block.is_snake() {
+                    let ts = Self::TILE_SIZE;
+                    let dir = Direction::from(*block);
+                    let length = normalized_progress * ts;
+                    match dir {
+                        Direction::North => gc.fill_rect(0.0, ts - length, ts, length),
+                        Direction::South => gc.fill_rect(0.0, 0.0, ts, length),
+                        Direction::East => gc.fill_rect(0.0, 0.0, length, ts),
+                        Direction::West => gc.fill_rect(ts - length, 0.0, length, ts),
+                    }
+                } else if block.is_food() {
+                    gc.save();
+                    gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
+                    gc.fill_rect(0.0, 0.0, Self::TILE_SIZE, Self::TILE_SIZE);
+                    gc.restore();
+                }
+            }
+            WorldUpdate::Clear { prev_block } => {
+                let ts = Self::TILE_SIZE;
+                if prev_block.is_snake() {
+                    let dir = Direction::from(*prev_block);
+                    let length = normalized_progress * ts;
+                    match dir {
+                        Direction::North => gc.clear_rect(0.0, ts - length, ts, length),
+                        Direction::South => gc.clear_rect(0.0, 0.0, ts, length),
+                        Direction::East => gc.clear_rect(0.0, 0.0, length, ts),
+                        Direction::West => gc.clear_rect(ts - length, 0.0, length, ts),
+                    }
+                } else if normalized_progress == 1.0 {
+                    gc.clear_rect(0.0, 0.0, ts, ts);
+                }
             }
         }
     }
