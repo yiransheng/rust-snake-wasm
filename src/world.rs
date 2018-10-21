@@ -91,6 +91,13 @@ impl Board {
             None
         }
     }
+
+    fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
+        let x = rng.gen_range(0, self.width);
+        let y = rng.gen_range(0, self.height);
+
+        Coordinate { x, y }
+    }
 }
 
 pub struct World<R> {
@@ -251,8 +258,7 @@ impl<R: Rng> World<R> {
 
     fn spawn_food_and_push_update<Q: RenderSink<WorldUpdate>>(&mut self, q: &mut Q) {
         loop {
-            let coord =
-                Coordinate::random_within(&mut self.rng, self.board.width, self.board.height);
+            let coord = self.board.random_coordinate(&mut self.rng);
             let current_tile = Tile::from(self.board.get_block(coord));
 
             if current_tile == Tile::Empty {

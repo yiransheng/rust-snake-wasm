@@ -367,7 +367,7 @@ export function __wbindgen_string_get(i, len_ptr) {
 
 export const __wbindgen_cb_forget = dropRef;
 
-export function __wbindgen_closure_wrapper251(a, b, fi, di, _ignored) {
+export function __wbindgen_closure_wrapper252(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
     const cb = function(arg0) {

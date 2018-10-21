@@ -96,15 +96,6 @@ impl Coordinate {
             y: y as i32,
         }
     }
-    pub fn random_within<R: Rng>(rng: &mut R, width: i32, height: i32) -> Self {
-        debug_assert!(width > 0 && height > 0);
-
-        let x = rng.gen_range(0, width);
-        let y = rng.gen_range(0, height);
-
-        Coordinate { x, y }
-    }
-
     pub fn move_towards(self, dir: Direction) -> Self {
         let Coordinate { x, y } = self;
         match dir {
