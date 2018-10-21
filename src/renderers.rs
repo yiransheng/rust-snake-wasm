@@ -3,6 +3,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use data::Direction;
+use std::f64::consts::PI;
 use system::{DrawTile, GameSystem, Generation, Never, RenderQueue};
 use world::WorldUpdate;
 
@@ -61,6 +62,7 @@ impl CanvasRenderer {
             current_frame: 0,
         }
     }
+    #[inline]
     fn setup<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
         let gen_0 = Generation::default();
         let render_units = q.slice_for_generation(gen_0);
@@ -71,6 +73,7 @@ impl CanvasRenderer {
 
         self.generation = gen_0;
     }
+    #[inline]
     fn clear(&self) {
         self.gc.clear_rect(
             0.0,
@@ -79,6 +82,7 @@ impl CanvasRenderer {
             self.canvas.height() as f64,
         );
     }
+    #[inline]
     fn render<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
         let mut generation_completed = true;
 
@@ -142,9 +146,12 @@ impl DrawTile for WorldUpdate {
                         Direction::West => gc.fill_rect(x + ts - length, y, length, ts),
                     }
                 } else if block.is_food() {
+                    let r_full = Self::TILE_SIZE / 2.0;
+                    let r = r_full * normalized_progress;
                     gc.save();
                     gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
-                    gc.fill_rect(x, y, Self::TILE_SIZE, Self::TILE_SIZE);
+                    let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
+                    gc.fill();
                     gc.restore();
                 }
             }

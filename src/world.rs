@@ -182,20 +182,20 @@ impl<R: Rng> World<R> {
             self.reset();
         }
         self.set_world_size_update(render_queue);
+        self.spawn_food_and_push_update(render_queue);
 
         let mut gen = Generation::default();
 
         for (at, dir) in self.iter_snake() {
+            gen += 1;
+
             let update =
                 RenderUnit::new(gen, Self::RENDER_TICKS, at, SetBlock { block: dir.into() });
-            gen += 1;
 
             render_queue.push(update);
         }
 
         self.generation = gen;
-
-        self.spawn_food_and_push_update(render_queue);
     }
     #[inline]
     fn step_update<Q: RenderSink<WorldUpdate>>(&mut self, render_queue: &mut Q) -> Result<()> {

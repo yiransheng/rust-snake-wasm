@@ -52,6 +52,14 @@ export function __widl_instanceof_CanvasRenderingContext2D(idx) {
     return getObject(idx) instanceof CanvasRenderingContext2D ? 1 : 0;
 }
 
+const __widl_f_fill_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.fill || function() {
+    throw new Error(`wasm-bindgen: CanvasRenderingContext2D.prototype.fill does not exist`);
+};
+
+export function __widl_f_fill_CanvasRenderingContext2D(arg0) {
+    __widl_f_fill_CanvasRenderingContext2D_target.call(getObject(arg0));
+}
+
 function GetOwnOrInheritedPropertyDescriptor(obj, id) {
     while (obj) {
         let desc = Object.getOwnPropertyDescriptor(obj, id);
@@ -67,6 +75,29 @@ const __widl_f_set_fill_style_CanvasRenderingContext2D_target = GetOwnOrInherite
 
 export function __widl_f_set_fill_style_CanvasRenderingContext2D(arg0, arg1) {
     __widl_f_set_fill_style_CanvasRenderingContext2D_target.call(getObject(arg0), getObject(arg1));
+}
+
+const __widl_f_arc_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.arc || function() {
+    throw new Error(`wasm-bindgen: CanvasRenderingContext2D.prototype.arc does not exist`);
+};
+
+let cachegetUint32Memory = null;
+function getUint32Memory() {
+    if (cachegetUint32Memory === null || cachegetUint32Memory.buffer !== wasm.memory.buffer) {
+        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachegetUint32Memory;
+}
+
+export function __widl_f_arc_CanvasRenderingContext2D(arg0, arg1, arg2, arg3, arg4, arg5, exnptr) {
+    try {
+        __widl_f_arc_CanvasRenderingContext2D_target.call(getObject(arg0), arg1, arg2, arg3, arg4, arg5);
+    } catch (e) {
+        const view = getUint32Memory();
+        view[exnptr / 4] = 1;
+        view[exnptr / 4 + 1] = addHeapObject(e);
+
+    }
 }
 
 const __widl_f_clear_rect_CanvasRenderingContext2D_target = CanvasRenderingContext2D.prototype.clearRect || function() {
@@ -104,14 +135,6 @@ export function __widl_f_save_CanvasRenderingContext2D(arg0) {
 const __widl_f_create_element_Document_target = Document.prototype.createElement || function() {
     throw new Error(`wasm-bindgen: Document.prototype.createElement does not exist`);
 };
-
-let cachegetUint32Memory = null;
-function getUint32Memory() {
-    if (cachegetUint32Memory === null || cachegetUint32Memory.buffer !== wasm.memory.buffer) {
-        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
-    }
-    return cachegetUint32Memory;
-}
 
 const lTextDecoder = typeof TextDecoder === 'undefined' ? require('util').TextDecoder : TextDecoder;
 

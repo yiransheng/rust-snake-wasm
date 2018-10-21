@@ -12,12 +12,12 @@ use either::Either;
 use rand::rngs::SmallRng;
 
 mod data;
-mod render;
+mod renderers;
 mod system;
 mod world;
 
 use data::Direction;
-use render::CanvasRenderer;
+use renderers::CanvasRenderer;
 use system::{GameInput, GameSystem, RenderQueue, StartGame};
 use world::WorldBuilder;
 

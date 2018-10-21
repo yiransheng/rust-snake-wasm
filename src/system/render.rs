@@ -72,6 +72,16 @@ pub struct RenderQueue<P> {
     queue: Vec<RenderUnit<P>>,
 }
 
+impl<P> RenderSink<P> for RenderQueue<P> {
+    fn is_ready(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    fn push(&mut self, unit: RenderUnit<P>) {
+        self.queue.push(unit);
+    }
+}
+
 impl<P> FromIterator<RenderUnit<P>> for RenderQueue<P> {
     fn from_iter<T>(iter: T) -> Self
     where
@@ -109,15 +119,5 @@ impl<P> RenderQueue<P> {
             .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1));
 
         &self.queue[rng]
-    }
-}
-
-impl<P> RenderSink<P> for RenderQueue<P> {
-    fn is_ready(&self) -> bool {
-        self.queue.is_empty()
-    }
-
-    fn push(&mut self, unit: RenderUnit<P>) {
-        self.queue.push(unit);
     }
 }
