@@ -496,6 +496,18 @@ mod test_utils {
 mod tests {
     use super::test_utils::*;
     use super::*;
+    use std::marker::PhantomData;
+
+    struct MockSink<T> {
+        _marker: PhantomData<T>,
+    }
+
+    impl<T> RenderSink<T> for MockSink<T> {
+        fn is_empty(&self) -> bool {
+            true
+        }
+        fn push(&mut self, x: RenderUnit<T>) {}
+    }
 
     #[test]
     fn test_game() {
@@ -506,13 +518,14 @@ oooooooooo
 oooo*ooooo
 oooooooooo";
         let mut world = World::from_ascii(world);
-        let mut q = RenderQueue::new();
+        let mut q = MockSink {
+            _marker: PhantomData,
+        };
 
         {
             let mut update = |n: usize, dir: Direction| {
                 for _ in 0..n {
                     world.tick_update(&mut q);
-                    q.clear();
                 }
                 world.set_direction(dir);
             };
