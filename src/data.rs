@@ -64,7 +64,8 @@ impl Block {
     }
     #[inline]
     pub fn is_food(self) -> bool {
-        self.raw == 0
+        // second bit is 1
+        self.raw & 0b0100_0000 != 0
     }
     #[inline]
     pub fn is_snake(self) -> bool {

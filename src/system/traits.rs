@@ -109,7 +109,6 @@ where
         match self.state {
             PlayState::Running => {}
             _ => {
-                web_sys::console::log_1(&"start game".into());
                 self.system.start_up(q);
                 self.state = PlayState::Running;
             }

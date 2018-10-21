@@ -127,12 +127,10 @@ impl<R: Rng> GameSystem for World<R> {
         self.setup(q);
     }
     fn tick(&mut self, cmd: Option<Direction>, q: &mut RenderQueue<Self::Msg>) -> Result<()> {
-        web_sys::console::log_1(&"world_tick".into());
         if let Some(dir) = cmd {
             self.set_direction(dir);
         }
         if q.is_ready() {
-            web_sys::console::log_1(&"state_change".into());
             self.step_update(q)
         } else {
             Ok(())
@@ -213,15 +211,17 @@ impl<R: Rng> World<R> {
             Tile::OutOfBound => Err(UpdateError::OutOfBound),
             Tile::Snake => Err(UpdateError::CollideBody),
             Tile::Empty => {
-                self.set_block_and_push_update(next_head, head_dir, render_queue);
                 self.head = next_head;
 
                 let tail = self.tail;
-                let tail_dir = self.board.get_block(self.tail).into();
-                let next_tail = self.tail.move_towards(tail_dir);
+                let tail_dir = self.board.get_block(self.tail);
+                let next_tail = self.tail.move_towards(tail_dir.into());
 
-                self.set_block_and_push_update(tail, Block::empty(), render_queue);
                 self.tail = next_tail;
+
+                self.set_block_and_push_update(next_head, head_dir, render_queue);
+                self.generation += 1;
+                self.set_block_and_push_update(tail, Block::empty(), render_queue);
 
                 Ok(())
             }
@@ -236,7 +236,12 @@ impl<R: Rng> World<R> {
 
     #[inline(always)]
     fn mk_render_unit(&self, at: Coordinate, u: WorldUpdate) -> RenderUnit<WorldUpdate> {
-        RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
+        match u {
+            u @ WorldUpdate::Clear { prev_block: _ } => {
+                RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
+            }
+            u @ _ => RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u),
+        }
     }
 
     fn set_world_size_update<Q: RenderSink<WorldUpdate>>(&self, q: &mut Q) {
@@ -264,10 +269,11 @@ impl<R: Rng> World<R> {
         q: &mut Q,
     ) {
         let b: Block = b.into();
+        let prev_block = self.board.get_block(coord);
+
         self.set_block(coord, b);
 
         if b.is_empty() {
-            let prev_block = self.board.get_block(coord);
             q.push(self.mk_render_unit(coord, WorldUpdate::Clear { prev_block }));
         } else {
             q.push(self.mk_render_unit(coord, WorldUpdate::SetBlock { block: b }));
