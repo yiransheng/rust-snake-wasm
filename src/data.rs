@@ -53,6 +53,9 @@ impl Block {
     pub fn into_raw(self) -> u8 {
         self.raw
     }
+    pub fn is_empty(self) -> bool {
+        self.raw == 0
+    }
     pub fn is_snake(self) -> bool {
         // first bit is 1
         self.raw & 0b1000_0000 != 0

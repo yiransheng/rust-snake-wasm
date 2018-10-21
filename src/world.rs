@@ -185,14 +185,7 @@ impl<R: Rng> World<R> {
 
         self.generation = gen;
 
-        let food_coord = self.spawn_food();
-
-        render_queue.push(self.mk_render_unit(
-            food_coord,
-            SetBlock {
-                block: Block::food(),
-            },
-        ));
+        self.spawn_food_and_push_update(render_queue);
     }
     #[inline]
     fn tick_update(&mut self, render_queue: &mut RenderQueue<WorldUpdate>) -> Result<()> {
@@ -214,47 +207,21 @@ impl<R: Rng> World<R> {
             Tile::OutOfBound => Err(UpdateError::OutOfBound),
             Tile::Snake => Err(UpdateError::CollideBody),
             Tile::Empty => {
-                self.set_block(next_head, head_dir);
+                self.set_block_and_push_update(next_head, head_dir, render_queue);
                 self.head = next_head;
 
                 let tail = self.tail;
                 let tail_dir = self.board.get_block(self.tail).into();
                 let next_tail = self.tail.move_towards(tail_dir);
 
-                self.set_block(tail, Block::empty());
+                self.set_block_and_push_update(tail, Block::empty(), render_queue);
                 self.tail = next_tail;
-
-                render_queue.push(self.mk_render_unit(
-                    next_tail,
-                    SetBlock {
-                        block: head_dir.into(),
-                    },
-                ));
-                render_queue.push(self.mk_render_unit(
-                    tail,
-                    Clear {
-                        prev_block: tail_dir.into(),
-                    },
-                ));
 
                 Ok(())
             }
             Tile::Food => {
-                self.set_block(next_head, head_dir);
-                let food_coord = self.spawn_food();
-
-                render_queue.push(self.mk_render_unit(
-                    next_head,
-                    SetBlock {
-                        block: head_dir.into(),
-                    },
-                ));
-                render_queue.push(self.mk_render_unit(
-                    food_coord,
-                    SetBlock {
-                        block: Block::food(),
-                    },
-                ));
+                self.set_block_and_push_update(next_head, head_dir, render_queue);
+                self.spawn_food_and_push_update(render_queue);
 
                 Ok(())
             }
@@ -266,17 +233,39 @@ impl<R: Rng> World<R> {
         RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
     }
 
-    fn spawn_food(&mut self) -> Coordinate {
+    fn spawn_food_and_push_update(&mut self, q: &mut RenderQueue<WorldUpdate>) {
         loop {
             let coord =
                 Coordinate::random_within(&mut self.rng, self.board.width, self.board.height);
             let current_tile = Tile::from(self.board.get_block(coord));
 
             if current_tile == Tile::Empty {
-                self.set_block(coord, Block::food());
-                return coord;
+                self.set_block_and_push_update(coord, Block::food(), q);
+                return;
             }
         }
+    }
+
+    fn set_block_and_push_update<B: Into<Block>>(
+        &mut self,
+        coord: Coordinate,
+        b: B,
+        q: &mut RenderQueue<WorldUpdate>,
+    ) {
+        let b: Block = b.into();
+        self.set_block(coord, b);
+
+        if b.is_empty() {
+            let prev_block = self.board.get_block(coord);
+            q.push(self.mk_render_unit(coord, WorldUpdate::Clear { prev_block }));
+        } else {
+            q.push(self.mk_render_unit(coord, WorldUpdate::SetBlock { block: b }));
+        }
+    }
+
+    #[inline]
+    fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
+        self.board.set_block(coord, b.into());
     }
 
     #[inline]
@@ -285,11 +274,6 @@ impl<R: Rng> World<R> {
             board: &self.board,
             at: self.tail,
         }
-    }
-
-    #[inline]
-    fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
-        self.board.set_block(coord, b.into());
     }
 }
 
@@ -386,12 +370,16 @@ impl SnakeBuilder {
 
         let rng = R::from_seed(seed);
 
-        let iter = SnakeIter {
-            board: &self.board,
-            at: self.tail,
-        };
+        let initial_snake: Vec<(Coordinate, Direction)>;
 
-        let initial_snake: Vec<_> = iter.collect();
+        {
+            let iter = SnakeIter {
+                board: &self.board,
+                at: self.tail,
+            };
+
+            initial_snake = iter.collect();
+        }
 
         World {
             board: self.board,
@@ -468,18 +456,23 @@ mod test_utils {
                 }
             }
 
-            let iter = SnakeIter {
-                board: &board,
-                at: tail,
-            };
+            let initial_snake: Vec<(Coordinate, Direction)>;
 
-            let initial_snake: Vec<_> = iter.collect();
+            {
+                let iter = SnakeIter {
+                    board: &board,
+                    at: tail,
+                };
+
+                initial_snake = iter.collect();
+            }
 
             World {
                 board,
                 head,
                 tail,
-                generation: Generation::default(),
+                // reading from ascii can skip initial setup
+                generation: Generation::default() + 1,
                 rng: SmallRng::from_seed([0; 16]),
 
                 initial_snake,
