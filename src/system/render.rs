@@ -52,8 +52,10 @@ where
         let inner_x = (x as f64) * P::TILE_SIZE;
         let inner_y = (y as f64) * P::TILE_SIZE;
 
+        web_sys::console::log_2(&"Frame".into(), &frame.into());
+
         if frame < self.duration {
-            let normalized_progress = (frame as f64) / (self.duration as f64);
+            let normalized_progress = (frame as f64 + 1.0) / (self.duration as f64);
 
             self.payload
                 .draw_tile(gc, inner_x, inner_y, normalized_progress);

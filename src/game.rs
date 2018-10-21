@@ -116,7 +116,6 @@ impl<G: GameState, R: Renderer<UpdateEff = G::UpdateEff>> RunGame<G, R> {
                     self.queue_render(eff);
                 }
                 Err(_) => {
-                    web_sys::console::log_1(&"Is Over".into());
                     self.status.set(GameStatus::GameOver);
                 }
             },

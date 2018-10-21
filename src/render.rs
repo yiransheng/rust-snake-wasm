@@ -80,14 +80,12 @@ impl CanvasRenderer {
         );
     }
     fn render<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
-        let mut generation_completed = false;
+        let mut generation_completed = true;
 
         {
             let render_units = q.slice_for_generation(self.generation);
 
-            if render_units.is_empty() {
-                generation_completed = true;
-            } else {
+            if !render_units.is_empty() {
                 for ru in render_units {
                     if ru.draw_frame(&self.gc, self.current_frame) {
                         generation_completed = false;
@@ -129,7 +127,7 @@ impl DrawTile for WorldUpdate {
         }
     }
 
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, _x: f64, _y: f64, normalized_progress: f64) {
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, normalized_progress: f64) {
         match self {
             WorldUpdate::SetWorldSize(_, _) => {}
             WorldUpdate::SetBlock { block } => {
@@ -138,15 +136,15 @@ impl DrawTile for WorldUpdate {
                     let dir = Direction::from(*block);
                     let length = normalized_progress * ts;
                     match dir {
-                        Direction::North => gc.fill_rect(0.0, ts - length, ts, length),
-                        Direction::South => gc.fill_rect(0.0, 0.0, ts, length),
-                        Direction::East => gc.fill_rect(0.0, 0.0, length, ts),
-                        Direction::West => gc.fill_rect(ts - length, 0.0, length, ts),
+                        Direction::North => gc.fill_rect(x, y + ts - length, ts, length),
+                        Direction::South => gc.fill_rect(x, y, ts, length),
+                        Direction::East => gc.fill_rect(x, y, length, ts),
+                        Direction::West => gc.fill_rect(x + ts - length, y, length, ts),
                     }
                 } else if block.is_food() {
                     gc.save();
                     gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
-                    gc.fill_rect(0.0, 0.0, Self::TILE_SIZE, Self::TILE_SIZE);
+                    gc.fill_rect(x, y, Self::TILE_SIZE, Self::TILE_SIZE);
                     gc.restore();
                 }
             }
@@ -156,13 +154,13 @@ impl DrawTile for WorldUpdate {
                     let dir = Direction::from(*prev_block);
                     let length = normalized_progress * ts;
                     match dir {
-                        Direction::North => gc.clear_rect(0.0, ts - length, ts, length),
-                        Direction::South => gc.clear_rect(0.0, 0.0, ts, length),
-                        Direction::East => gc.clear_rect(0.0, 0.0, length, ts),
-                        Direction::West => gc.clear_rect(ts - length, 0.0, length, ts),
+                        Direction::North => gc.clear_rect(x, y + ts - length, ts, length),
+                        Direction::South => gc.clear_rect(x, y, ts, length),
+                        Direction::East => gc.clear_rect(x, y, length, ts),
+                        Direction::West => gc.clear_rect(x + ts - length, y, length, ts),
                     }
                 } else if normalized_progress == 1.0 {
-                    gc.clear_rect(0.0, 0.0, ts, ts);
+                    gc.clear_rect(x, y, ts, ts);
                 }
             }
         }
