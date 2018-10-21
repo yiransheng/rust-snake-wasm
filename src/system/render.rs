@@ -3,7 +3,7 @@ use std::iter::FromIterator;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use super::super::data::Coordinate;
-use super::traits::DrawTile;
+use super::traits::{DrawTile, RenderSink};
 
 pub type Generation = u32;
 
@@ -83,13 +83,6 @@ impl<P> RenderQueue<P> {
     pub fn new() -> Self {
         RenderQueue { queue: Vec::new() }
     }
-    pub fn push(&mut self, unit: RenderUnit<P>) {
-        self.queue.push(unit);
-    }
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
     pub fn clear(&mut self) {
         self.queue.clear();
     }
@@ -113,5 +106,15 @@ impl<P> RenderQueue<P> {
             .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1));
 
         &self.queue[rng]
+    }
+}
+
+impl<P> RenderSink<P> for RenderQueue<P> {
+    fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    fn push(&mut self, unit: RenderUnit<P>) {
+        self.queue.push(unit);
     }
 }

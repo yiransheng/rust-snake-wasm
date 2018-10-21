@@ -2,7 +2,7 @@ use rand::{Rng, SeedableRng};
 use std::convert::{From, Into};
 
 use data::{Block, Coordinate, Direction, Tile};
-use system::{GameSystem, Generation, RenderQueue, RenderUnit};
+use system::{GameSystem, Generation, RenderQueue, RenderSink, RenderUnit};
 
 struct Board {
     blocks: Vec<Block>,
@@ -166,7 +166,7 @@ impl<R: Rng> World<R> {
     }
 
     #[inline]
-    fn setup(&mut self, render_queue: &mut RenderQueue<WorldUpdate>) {
+    fn setup<Q: RenderSink<WorldUpdate>>(&mut self, render_queue: &mut Q) {
         use self::WorldUpdate::*;
 
         if self.generation > Generation::default() {
@@ -188,9 +188,7 @@ impl<R: Rng> World<R> {
         self.spawn_food_and_push_update(render_queue);
     }
     #[inline]
-    fn tick_update(&mut self, render_queue: &mut RenderQueue<WorldUpdate>) -> Result<()> {
-        use self::WorldUpdate::*;
-
+    fn tick_update<Q: RenderSink<WorldUpdate>>(&mut self, render_queue: &mut Q) -> Result<()> {
         debug_assert!(self.generation > Generation::default());
 
         if !render_queue.is_empty() {
@@ -233,7 +231,7 @@ impl<R: Rng> World<R> {
         RenderUnit::new(self.generation, Self::RENDER_TICKS, at, u)
     }
 
-    fn spawn_food_and_push_update(&mut self, q: &mut RenderQueue<WorldUpdate>) {
+    fn spawn_food_and_push_update<Q: RenderSink<WorldUpdate>>(&mut self, q: &mut Q) {
         loop {
             let coord =
                 Coordinate::random_within(&mut self.rng, self.board.width, self.board.height);
@@ -246,11 +244,11 @@ impl<R: Rng> World<R> {
         }
     }
 
-    fn set_block_and_push_update<B: Into<Block>>(
+    fn set_block_and_push_update<B: Into<Block>, Q: RenderSink<WorldUpdate>>(
         &mut self,
         coord: Coordinate,
         b: B,
-        q: &mut RenderQueue<WorldUpdate>,
+        q: &mut Q,
     ) {
         let b: Block = b.into();
         self.set_block(coord, b);
