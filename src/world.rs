@@ -572,9 +572,7 @@ oooooooooo";
             update(3, Direction::West);
         }
 
-        // ate food -> new food deterministically
-        // generated from known seed
-        let final_state = "....*.....
+        let final_state = "..........
 ..........
 ..........
 .......o..
@@ -582,7 +580,9 @@ oooooooooo";
 ..........
 ";
 
-        assert_eq!(final_state, &world.to_string());
+        // foot eaten
+        // replace food (*) with empty (.) before states comparision
+        assert_eq!(final_state, &world.to_string().replace('*', "."));
     }
 
     #[test]

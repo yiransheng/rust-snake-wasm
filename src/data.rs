@@ -53,6 +53,10 @@ pub struct Block {
 
 impl Block {
     #[inline]
+    pub unsafe fn from_raw(raw: u8) -> Self {
+        Block { raw }
+    }
+    #[inline]
     pub fn empty() -> Self {
         Block { raw: 0 }
     }
@@ -65,10 +69,6 @@ impl Block {
     pub fn out_of_bound() -> Self {
         // first two bits off: OOB
         Block { raw: 0b0011_1111 }
-    }
-    #[inline]
-    pub fn from_raw(raw: u8) -> Self {
-        Block { raw }
     }
     #[inline]
     pub fn into_raw(self) -> u8 {
@@ -124,12 +124,6 @@ impl Coordinate {
 }
 
 // conversions
-
-impl Into<Block> for u8 {
-    fn into(self) -> Block {
-        Block::from_raw(self)
-    }
-}
 
 impl From<Block> for Tile {
     fn from(b: Block) -> Tile {
@@ -190,19 +184,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_converion() {
+    fn test_converion_safety() {
         for x in 0..u8::max_value() {
-            let b = Block::from_raw(x);
-            let tile = Tile::from(b);
-
-            if b.is_snake() {
-                assert_eq!(tile, Tile::Snake);
-            }
-
             // make sure every u8 bit pattern result in a valid Direction
             // ...that is, not getting SIGIL or something
             unsafe {
+                let b = Block::from_raw(x);
+                let tile = Tile::from(b);
+
+                if b.is_snake() {
+                    assert_eq!(tile, Tile::Snake);
+                }
+
                 let dir = b.into_direction();
+
                 assert!(
                     dir == Direction::North
                         || dir == Direction::South
