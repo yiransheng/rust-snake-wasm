@@ -1,5 +1,8 @@
 use std::cmp;
 use std::iter::FromIterator;
+use std::ops::Range;
+
+use arraydeque::ArrayDeque;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use super::super::data::Coordinate;
@@ -9,7 +12,7 @@ pub type Generation = u32;
 
 #[derive(Debug)]
 pub struct RenderUnit<P> {
-    generation: Generation,
+    pub generation: Generation,
     duration: u8,
     at: Coordinate,
     payload: P,
@@ -66,6 +69,7 @@ where
 
             true
         } else {
+            self.payload.draw_tile(gc, inner_x, inner_y, 1.0);
             false
         }
     }
@@ -75,7 +79,7 @@ where
 }
 
 pub struct RenderQueue<P> {
-    queue: Vec<RenderUnit<P>>,
+    queue: ArrayDeque<[RenderUnit<P>; 8]>,
 }
 
 impl<P> RenderSink<P> for RenderQueue<P> {
@@ -84,7 +88,7 @@ impl<P> RenderSink<P> for RenderQueue<P> {
     }
 
     fn push(&mut self, unit: RenderUnit<P>) {
-        self.queue.push(unit);
+        self.queue.push_back(unit).expect("It's full");
     }
 }
 
@@ -93,40 +97,47 @@ impl<P> FromIterator<RenderUnit<P>> for RenderQueue<P> {
     where
         T: IntoIterator<Item = RenderUnit<P>>,
     {
-        let queue = iter.into_iter().collect::<Vec<_>>();
+        let queue = iter.into_iter().collect::<ArrayDeque<[_; 8]>>();
         RenderQueue { queue }
     }
 }
 
 impl<P> RenderQueue<P> {
     pub fn new() -> Self {
-        RenderQueue { queue: Vec::new() }
-    }
-    pub fn clear(&mut self) {
-        self.queue.clear();
+        RenderQueue {
+            queue: ArrayDeque::new(),
+        }
     }
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut RenderUnit<P>> {
         self.queue.iter_mut()
     }
 
-    pub fn first_generation(&self) -> Option<Generation> {
-        self.queue.first().map(|u| u.generation)
-    }
-    pub fn last_generation(&self) -> Option<Generation> {
-        self.queue.last().map(|u| u.generation)
+    #[inline]
+    pub fn peek_generation<'a>(&'a self, g: Generation) -> impl Iterator<Item = &'a RenderUnit<P>> {
+        self.queue
+            .iter()
+            .skip_while(move |u| u.generation < g)
+            .take_while(move |u| u.generation == g)
     }
 
-    pub fn slice_for_generation(&self, g: Generation) -> &[RenderUnit<P>] {
+    #[inline]
+    pub fn drain_generation<'a>(
+        &'a mut self,
+        g: Generation,
+    ) -> impl Iterator<Item = RenderUnit<P>> + 'a {
+        let rng = self.range_for_generation(g);
+
+        self.queue.drain(rng)
+    }
+
+    fn range_for_generation(&self, g: Generation) -> Range<usize> {
         // queue typically too small to warrant fancy things like binary search
-        let rng = self
-            .queue
+        self.queue
             .iter()
             .enumerate()
             .skip_while(|(_, u)| u.generation < g)
             .take_while(|(_, u)| u.generation == g)
             .map(|(i, _)| i)
-            .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1));
-
-        &self.queue[rng]
+            .fold(0..0, |r, i| cmp::min(r.start, i)..cmp::max(r.end, i + 1))
     }
 }

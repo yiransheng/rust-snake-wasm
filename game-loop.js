@@ -4,7 +4,6 @@ export class GameLoop {
     this._rafId = null;
     this._unlistens = [];
     this._key = 0;
-    this._framePressed = 0;
 
     this._run = this._run.bind(this);
     this._onKeyDown = this._onKeyDown.bind(this);
@@ -39,12 +38,8 @@ export class GameLoop {
 
   _run() {
     if (this.running) {
-      if (this._key !== 0) {
-        this._framePressed = Math.min(255, this._framePressed + 1);
-      }
-
       try {
-        this._onEnterFrame(this._key, this._framePressed);
+        this._onEnterFrame(this._key);
         this._rafId = window.requestAnimationFrame(this._run);
       } catch (err) {
         this.stop();
@@ -60,17 +55,13 @@ export class GameLoop {
       case 38:
       case 39:
       case 40:
-        if (this._key !== e.keyCode) {
-          this._key = e.keyCode;
-          this._framePressed = 0;
-        }
+        this._key = e.keyCode;
         break;
       default:
     }
   }
   _onKeyUp() {
     this._key = 0;
-    this._framePressed = 0;
   }
 }
 

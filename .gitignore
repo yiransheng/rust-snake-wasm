@@ -15,7 +15,7 @@ Cargo.lock
 
 /dist
 *.wasm
-*snake_wasm.js
+**/*snake_wasm.js
 
 # Logs
 logs

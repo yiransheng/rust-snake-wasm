@@ -22,29 +22,19 @@ impl Direction {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Key {
     code: u8,
-    pressed_frames: u8,
 }
 
 impl Key {
-    pub fn new(code: u8, pressed_frames: u8) -> Self {
-        Key {
-            code,
-            pressed_frames,
-        }
+    pub fn new(code: u8) -> Self {
+        Key { code }
     }
 
-    pub fn modify_animation_frame(self, base_frame: u8) -> u8 {
-        let frames_to_reduce = self.pressed_frames / 10;
-        let min_frame = 1;
-
-        if frames_to_reduce >= base_frame + min_frame {
-            min_frame
-        } else {
-            base_frame - frames_to_reduce
-        }
+    pub fn is_direction_key(self) -> bool {
+        let dir: Option<Direction> = self.into();
+        dir.is_some()
     }
 }
 
@@ -167,10 +157,7 @@ impl From<Direction> for Block {
 
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
-        Key {
-            code,
-            pressed_frames: 1,
-        }
+        Key { code }
     }
 }
 

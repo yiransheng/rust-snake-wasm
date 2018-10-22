@@ -1,7 +1,7 @@
 use rand::{Rng, SeedableRng};
 use std::convert::{From, Into};
 
-use data::{Block, Coordinate, Direction, Key, Tile};
+use data::{Block, Coordinate, Direction, Tile};
 use system::{GameSystem, Generation, RenderQueue, RenderSink, RenderUnit};
 
 struct Grid {
@@ -23,17 +23,15 @@ impl Grid {
     fn clear(&mut self) {
         self.blocks.iter_mut().for_each(|x| *x = Block::empty());
     }
+    #[inline]
     fn get_block(&self, coord: Coordinate) -> Block {
-        let Coordinate { x, y } = coord;
-        let width = self.width;
-        let height = self.height;
-
-        if x < 0 || x >= width || y < 0 || y >= height {
-            Block::out_of_bound()
+        if let Some(index) = self.find_index(coord) {
+            self.blocks[index]
         } else {
-            self.blocks[(y * width + x) as usize]
+            Block::out_of_bound()
         }
     }
+    #[inline]
     fn set_block(&mut self, coord: Coordinate, b: Block) -> bool {
         if let Some(block) = self.get_block_mut(coord) {
             *block = b;
@@ -42,7 +40,15 @@ impl Grid {
             false
         }
     }
+    #[inline]
     fn get_block_mut(&mut self, coord: Coordinate) -> Option<&mut Block> {
+        if let Some(index) = self.find_index(coord) {
+            self.blocks.get_mut(index)
+        } else {
+            None
+        }
+    }
+    fn find_index(&self, coord: Coordinate) -> Option<usize> {
         let Coordinate { x, y } = coord;
         let width = self.width;
         let height = self.height;;
@@ -50,7 +56,7 @@ impl Grid {
         if x < 0 || x >= width || y < 0 || y >= height {
             None
         } else {
-            self.blocks.get_mut((y * width + x) as usize)
+            Some((y * width + x) as usize)
         }
     }
 
@@ -93,8 +99,9 @@ impl Grid {
     }
 
     fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
-        let x = rng.gen_range(0, self.width);
-        let y = rng.gen_range(0, self.height);
+        // don't put the damn thing on edge
+        let x = rng.gen_range(1, self.width - 1);
+        let y = rng.gen_range(1, self.height - 1);
 
         Coordinate { x, y }
     }
@@ -116,7 +123,7 @@ pub enum UpdateError {
 }
 
 // side effect of a world update
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum WorldUpdate {
     SetBlock { block: Block },
     Clear { prev_block: Block },
@@ -150,7 +157,7 @@ impl<R: Rng> GameSystem for World<R> {
 }
 
 impl<R: Rng> World<R> {
-    const RENDER_TICKS: u8 = 5;
+    pub const RENDER_TICKS: u8 = 8;
 
     pub fn set_direction(&mut self, dir: Direction) {
         let head = self.head;

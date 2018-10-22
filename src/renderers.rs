@@ -1,20 +1,23 @@
-use wasm_bindgen::JsCast;
+use std::f64::consts::PI;
 
+use smallvec::SmallVec;
+use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use data::Direction;
-use std::f64::consts::PI;
-use system::{DrawTile, GameSystem, Generation, Never, RenderQueue};
+use system::{DrawTile, GameSystem, Generation, Never, RenderQueue, RenderUnit};
 use world::WorldUpdate;
 
-pub struct CanvasRenderer {
+pub struct CanvasRenderer<P> {
     generation: Generation,
     current_frame: u8,
     canvas: HtmlCanvasElement,
     gc: CanvasRenderingContext2d,
+
+    pending_updates: SmallVec<[RenderUnit<P>; 8]>,
 }
 
-impl GameSystem for CanvasRenderer {
+impl GameSystem for CanvasRenderer<WorldUpdate> {
     type Msg = WorldUpdate;
     type InputCmd = ();
     type GameOver = Never;
@@ -31,7 +34,7 @@ impl GameSystem for CanvasRenderer {
     fn tear_down(&mut self) {}
 }
 
-impl CanvasRenderer {
+impl<P> CanvasRenderer<P> {
     pub fn new() -> Self {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document
@@ -58,12 +61,17 @@ impl CanvasRenderer {
             gc: context,
             generation: Generation::default(),
             current_frame: 0,
+
+            pending_updates: SmallVec::new(),
         }
     }
     #[inline]
-    fn setup<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+    fn setup(&mut self, q: &mut RenderQueue<P>)
+    where
+        P: DrawTile,
+    {
         let gen_0 = Generation::default();
-        let render_units = q.slice_for_generation(gen_0);
+        let render_units = q.peek_generation(gen_0);
         for ru in render_units {
             ru.prepare_canvas(&self.canvas);
         }
@@ -81,18 +89,19 @@ impl CanvasRenderer {
         );
     }
     #[inline]
-    fn render<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+    fn render(&mut self, q: &mut RenderQueue<P>)
+    where
+        P: DrawTile,
+    {
+        if self.pending_updates.is_empty() {
+            self.fetch_updates(q);
+        }
+
         let mut generation_completed = true;
 
-        {
-            let render_units = q.slice_for_generation(self.generation);
-
-            if !render_units.is_empty() {
-                for ru in render_units {
-                    if ru.draw_frame(&self.gc, self.current_frame) {
-                        generation_completed = false;
-                    }
-                }
+        for ru in &self.pending_updates {
+            if ru.draw_frame(&self.gc, self.current_frame) {
+                generation_completed = false;
             }
         }
 
@@ -103,20 +112,23 @@ impl CanvasRenderer {
         }
     }
 
-    fn complete_generation<P: DrawTile>(&mut self, q: &mut RenderQueue<P>) {
+    fn fetch_updates(&mut self, q: &mut RenderQueue<P>) {
+        for unit in q.drain_generation(self.generation) {
+            self.pending_updates.push(unit);
+        }
+    }
+
+    fn complete_generation(&mut self, q: &mut RenderQueue<P>) {
         self.generation += 1;
         self.current_frame = 0;
 
-        if let Some(last_gen) = q.last_generation() {
-            if last_gen < self.generation {
-                q.clear();
-            }
-        }
+        self.pending_updates.clear();
+        self.fetch_updates(q);
     }
 }
 
 impl DrawTile for WorldUpdate {
-    const TILE_SIZE: f64 = 10.0;
+    const TILE_SIZE: f64 = 16.0;
 
     fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
         match self {
@@ -147,11 +159,12 @@ impl DrawTile for WorldUpdate {
                     let r_full = Self::TILE_SIZE / 2.0;
                     let r = r_full * normalized_progress;
                     gc.save();
+
                     gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
                     gc.begin_path();
                     let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
-                    gc.close_path();
                     gc.fill();
+
                     gc.restore();
                 }
             }

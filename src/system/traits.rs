@@ -1,8 +1,13 @@
-use super::{RenderQueue, RenderUnit};
 pub use either::Either;
+
 use std::collections::LinkedList;
 use std::marker::PhantomData;
+
+use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
+use super::{RenderQueue, RenderUnit};
+use data::Key;
 
 fn _assert_is_object_safe(_: &dyn GameSystem<Msg = (), InputCmd = (), GameOver = ()>) {}
 
@@ -116,6 +121,21 @@ pub type GameInput<T> = Either<StartGame, T>;
 pub struct WithPlayState<S> {
     state: PlayState,
     system: S,
+}
+impl<M, S> WithPlayState<S>
+where
+    S: GameSystem<Msg = M, InputCmd = Key, GameOver = ()> + 'static,
+    M: 'static,
+{
+    pub fn into_closure(mut self) -> Closure<FnMut(u8)> {
+        let mut render_queue = RenderQueue::new();
+
+        Closure::wrap(Box::new(move |key: u8| {
+            let key = Key::from(key);
+            let cmd: GameInput<Key> = key.into();
+            let _ = self.tick(cmd, &mut render_queue);
+        }) as Box<FnMut(_)>)
+    }
 }
 
 impl<M, I, S> GameSystem for WithPlayState<S>
