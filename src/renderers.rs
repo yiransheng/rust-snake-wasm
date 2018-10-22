@@ -100,7 +100,8 @@ impl<P> CanvasRenderer<P> {
         let mut generation_completed = true;
 
         for ru in &self.pending_updates {
-            if ru.draw_frame(&self.gc, self.current_frame) {
+            // has more to draw
+            if let Some(_) = ru.draw_frame(&self.gc, self.current_frame) {
                 generation_completed = false;
             }
         }

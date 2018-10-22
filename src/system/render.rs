@@ -56,7 +56,7 @@ impl<P> RenderUnit<P>
 where
     P: DrawTile,
 {
-    pub fn draw_frame(&self, gc: &CanvasRenderingContext2d, frame: u8) -> bool {
+    pub fn draw_frame(&self, gc: &CanvasRenderingContext2d, frame: u8) -> Option<()> {
         let Coordinate { x, y } = self.at;
         let inner_x = (x as f64) * P::TILE_SIZE;
         let inner_y = (y as f64) * P::TILE_SIZE;
@@ -67,10 +67,10 @@ where
             self.payload
                 .draw_tile(gc, inner_x, inner_y, normalized_progress);
 
-            true
+            Some(())
         } else {
             self.payload.draw_tile(gc, inner_x, inner_y, 1.0);
-            false
+            None
         }
     }
     pub fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
