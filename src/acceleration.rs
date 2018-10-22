@@ -41,9 +41,9 @@ impl AccMiddleware {
     #[inline]
     fn set_key(&mut self, k: Key) {
         if k.is_direction_key() && self.frames_accmulated < Self::MAX_ACCUMULATED {
-            self.frames_accmulated += 2;
-        } else if self.frames_accmulated > 0 {
-            self.frames_accmulated -= 1;
+            self.frames_accmulated += 1;
+        } else if self.frames_accmulated > 2 {
+            self.frames_accmulated -= 2;
         }
     }
     #[inline]
