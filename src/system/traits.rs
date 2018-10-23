@@ -1,7 +1,10 @@
+use std::iter::FromIterator;
+
 pub use either::Either;
 
 use std::collections::LinkedList;
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
