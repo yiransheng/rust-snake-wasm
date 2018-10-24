@@ -34,7 +34,7 @@ impl Into<GameOver> for UpdateError {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub(super) enum SnakeState {
+enum SnakeState {
     Eaten,
     Consuming(Tile),
 }
@@ -60,7 +60,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
     fn initialize(&'a mut self) -> Self::State {
         let food_at = self.spawn_food();
 
-        Initializer::FoodAt(&*self, food_at)
+        Initializer::WorldSize(&*self, food_at)
     }
 
     #[inline(always)]
@@ -218,8 +218,8 @@ impl<'a> Iterator for SnakeIter<'a> {
 }
 
 pub enum Initializer<'a, R> {
+    WorldSize(&'a World<R>, Coordinate),
     FoodAt(&'a World<R>, Coordinate),
-    WorldSize(&'a World<R>),
     SnakeIter(SnakeIter<'a>),
     Done,
 }
@@ -230,21 +230,21 @@ impl<'a, R: Rng> Iterator for Initializer<'a, R> {
     fn next(&mut self) -> Option<Self::Item> {
         match ::std::mem::replace(self, Initializer::Done) {
             Initializer::Done => None,
-            Initializer::FoodAt(world, at) => {
-                *self = Initializer::WorldSize(world);
-
-                Some(WorldUpdate::SetBlock {
-                    block: Block::food(),
-                    at,
-                })
-            }
-            Initializer::WorldSize(world) => {
-                *self = Initializer::SnakeIter(world.iter_snake());
+            Initializer::WorldSize(world, at) => {
+                *self = Initializer::FoodAt(world, at);
 
                 Some(WorldUpdate::SetWorldSize(
                     world.grid.width(),
                     world.grid.height(),
                 ))
+            }
+            Initializer::FoodAt(world, at) => {
+                *self = Initializer::SnakeIter(world.iter_snake());
+
+                Some(WorldUpdate::SetBlock {
+                    block: Block::food(),
+                    at,
+                })
             }
             Initializer::SnakeIter(mut iter) => {
                 let (at, dir) = iter.next()?;
