@@ -19,6 +19,8 @@ pub trait Model<'m> {
     fn initialize(&'m mut self) -> Self::State;
 
     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error>;
+
+    fn tear_down(&mut self);
 }
 
 pub trait Render {
