@@ -77,6 +77,7 @@ impl Grid {
         }
     }
 
+    #[cfg(test)]
     fn get_prev_snake_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
 
@@ -96,6 +97,7 @@ impl Grid {
             None
         }
     }
+    #[cfg(test)]
     fn get_next_snake_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
 
