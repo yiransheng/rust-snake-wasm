@@ -1,6 +1,7 @@
-#![feature(arbitrary_self_types)]
+#![feature(generators, generator_trait)]
 
 extern crate js_sys;
+extern crate void;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
@@ -13,19 +14,16 @@ use wasm_bindgen::prelude::*;
 
 use rand::rngs::SmallRng;
 
-mod acceleration;
+#[macro_use]
+mod macros;
+
+// mod acceleration;
 mod data;
-mod renderers;
+// mod renderers;
 mod system;
 mod world;
 
-#[macro_use]
-mod console_log;
-
-use acceleration::AccMiddleware;
 use data::{Direction, Key};
-use renderers::CanvasRenderer;
-use system::GameSystem;
 use world::WorldBuilder;
 
 #[wasm_bindgen(module = "./game-loop")]
@@ -44,26 +42,28 @@ extern "C" {
 
 #[wasm_bindgen]
 pub fn main() {
-    let world = WorldBuilder::new()
-        .width(64)
-        .height(32)
-        .set_snake(1, 1)
-        .extend(Direction::East)
-        .extend(Direction::East)
-        .extend(Direction::East)
-        .extend(Direction::East)
-        .build_with_seed::<SmallRng>([123; 16]);
+    /*
+     * let world = WorldBuilder::new()
+     *     .width(64)
+     *     .height(32)
+     *     .set_snake(1, 1)
+     *     .extend(Direction::East)
+     *     .extend(Direction::East)
+     *     .extend(Direction::East)
+     *     .extend(Direction::East)
+     *     .build_with_seed::<SmallRng>([123; 16]);
+     */
 
-    let game = world
-        .map_input(|key: Key| key.into())
-        .with_renderer(CanvasRenderer::new())
-        .with_middlewares()
-        .add_middleware(Box::new(AccMiddleware::new()))
-        .with_play_state();
+    // let game = world
+    // .map_input(|key: Key| key.into())
+    // .with_renderer(CanvasRenderer::new())
+    // .with_middlewares()
+    // .add_middleware(Box::new(AccMiddleware::new()))
+    // .with_play_state();
 
-    let each_tick = game.into_closure();
+    // let each_tick = game.into_closure();
 
-    GameLoop::new(&each_tick).start();
+    // GameLoop::new(&each_tick).start();
 
-    each_tick.forget();
+    // each_tick.forget();
 }

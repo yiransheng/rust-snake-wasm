@@ -1,8 +1,6 @@
 use std::convert::{From, Into};
 use std::mem::transmute;
 
-use system::{Either, GameInput, StartGame};
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Direction {
     North = 0b1000_0000,
@@ -163,18 +161,6 @@ impl From<Key> for Option<Direction> {
             39 => Some(Direction::East),
             40 => Some(Direction::South),
             _ => None,
-        }
-    }
-}
-
-impl<T> Into<GameInput<T>> for Key
-where
-    T: From<Key>,
-{
-    fn into(self) -> GameInput<T> {
-        match self.code {
-            13 => Either::Left(StartGame),
-            _ => Either::Right(T::from(self)),
         }
     }
 }

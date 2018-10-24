@@ -1,347 +1,96 @@
-use std::iter::FromIterator;
-
-pub use either::Either;
-
-use std::collections::LinkedList;
+use std::borrow::Borrow;
+use std::convert::AsRef;
+use std::iter::IntoIterator;
 use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
+use std::slice::Iter;
 
-use wasm_bindgen::prelude::*;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use std::ops::{Generator, GeneratorState};
 
-use super::{RenderQueue, RenderUnit};
-use data::Key;
+use void::Void;
 
-fn _assert_is_object_safe(_: &dyn GameSystem<Msg = (), InputCmd = (), GameOver = ()>) {}
+pub struct GameOver;
 
-pub trait RenderSink<T> {
-    fn is_ready(&self) -> bool;
+pub trait Model<'m> {
+    type Cmd;
+    type State: IntoIterator<Item = Self::Update> + 'm;
+    type Update;
+    type Error: Into<GameOver>;
 
-    fn push(&mut self, unit: RenderUnit<T>);
+    fn initialize(&'m mut self) -> Self::State;
+
+    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error>;
 }
 
-pub trait DrawTile {
-    const TILE_SIZE: f64;
+pub trait Render {
+    type Env;
+    type Model: for<'m> Model<'m>;
 
-    // normalized_progress: [0, 1]
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, normalized_progress: f64);
+    fn new(u: <Self::Model as Model>::Update) -> Self;
 
-    fn prepare_canvas(&self, canvas: &HtmlCanvasElement);
+    fn render(&mut self, env: &mut Self::Env) -> Option<()>;
 
-    fn instant(self) -> InstantDraw<Self>
+    #[inline]
+    fn into_generator(self, env: &mut Self::Env) -> RenderGen<Self::Env, Self>
     where
         Self: Sized,
     {
-        InstantDraw { inner: self }
-    }
-}
-
-pub struct InstantDraw<D> {
-    inner: D,
-}
-impl<D: DrawTile> DrawTile for InstantDraw<D> {
-    const TILE_SIZE: f64 = D::TILE_SIZE;
-
-    fn prepare_canvas(&self, canvas: &HtmlCanvasElement) {
-        self.inner.prepare_canvas(canvas);
-    }
-
-    #[inline]
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, x: f64, y: f64, _normalized_progress: f64) {
-        self.inner.draw_tile(gc, x, y, 1.0);
-    }
-}
-
-pub trait GameSystem {
-    type Msg;
-    type InputCmd;
-    type GameOver;
-
-    fn start_up(&mut self, &mut RenderQueue<Self::Msg>);
-
-    fn tick(
-        &mut self,
-        cmd: Self::InputCmd,
-        &mut RenderQueue<Self::Msg>,
-    ) -> Result<(), Self::GameOver>;
-
-    fn tear_down(&mut self);
-
-    fn map_input<F, T>(self, f: F) -> MapInput<Self, F, T>
-    where
-        Self: Sized,
-        F: Fn(T) -> Self::InputCmd,
-    {
-        MapInput {
-            system: self,
-            f,
-            _marker: PhantomData,
-        }
-    }
-
-    fn with_renderer<R>(self, r: R) -> WithRenderer<Self, R>
-    where
-        Self: Sized,
-        R: GameSystem<Msg = Self::Msg, InputCmd = (), GameOver = Never>,
-    {
-        WithRenderer {
-            system: self,
-            renderer: r,
-        }
-    }
-
-    fn with_play_state(self) -> WithPlayState<Self>
-    where
-        Self: Sized,
-    {
-        WithPlayState {
-            state: PlayState::NotRunning,
-            system: self,
+        RenderGen {
+            env,
+            renderer: self,
         }
     }
 }
 
-pub enum Never {}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-enum PlayState {
-    NotRunning,
-    Running,
-    Over,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct StartGame;
-
-impl<T> Into<GameInput<T>> for StartGame {
-    fn into(self) -> GameInput<T> {
-        Either::Left(self)
-    }
-}
-
-pub type GameInput<T> = Either<StartGame, T>;
-
-pub struct WithPlayState<S> {
-    state: PlayState,
-    system: S,
-}
-impl<M, S> WithPlayState<S>
-where
-    S: GameSystem<Msg = M, InputCmd = Key, GameOver = ()> + 'static,
-    M: 'static,
-{
-    pub fn into_closure(mut self) -> Closure<FnMut(u8)> {
-        let mut render_queue = RenderQueue::new();
-
-        Closure::wrap(Box::new(move |key: u8| {
-            let key = Key::from(key);
-            let cmd: GameInput<Key> = key.into();
-            let _ = self.tick(cmd, &mut render_queue);
-        }) as Box<FnMut(_)>)
-    }
-}
-
-impl<M, I, S> GameSystem for WithPlayState<S>
-where
-    S: GameSystem<Msg = M, InputCmd = I, GameOver = ()>,
-{
-    type Msg = M;
-    type InputCmd = GameInput<I>;
-    type GameOver = Never;
-
-    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
-        match self.state {
-            PlayState::Running => {}
-            _ => {
-                self.system.start_up(q);
-                self.state = PlayState::Running;
-            }
-        }
-    }
-
-    fn tick(
-        &mut self,
-        cmd: Self::InputCmd,
-        q: &mut RenderQueue<Self::Msg>,
-    ) -> Result<(), Self::GameOver> {
-        match self.state {
-            PlayState::Running => match cmd {
-                Either::Right(cmd) => {
-                    if let Err(_) = self.system.tick(cmd, q) {
-                        self.tear_down();
-                    }
-                    Ok(())
-                }
-                Either::Left(StartGame) => Ok(()),
-            },
-            _ => match cmd {
-                Either::Left(StartGame) => {
-                    self.start_up(q);
-                    Ok(())
-                }
-                Either::Right(_) => Ok(()),
-            },
-        }
-    }
-
-    fn tear_down(&mut self) {
-        match self.state {
-            PlayState::Over => {}
-            _ => {
-                self.state = PlayState::Over;
-                self.system.tear_down();
-            }
-        }
-    }
-}
-
-pub struct MapInput<S, F, T> {
-    system: S,
-    f: F,
-    _marker: PhantomData<T>,
-}
-
-impl<S, T, F> GameSystem for MapInput<S, F, T>
-where
-    S: GameSystem,
-    F: Fn(T) -> S::InputCmd,
-{
-    type Msg = S::Msg;
-    type InputCmd = T;
-    type GameOver = S::GameOver;
-
-    #[inline]
-    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
-        self.system.start_up(q);
-    }
-
-    #[inline]
-    fn tick(
-        &mut self,
-        cmd: Self::InputCmd,
-        q: &mut RenderQueue<Self::Msg>,
-    ) -> Result<(), Self::GameOver> {
-        let cmd = (self.f)(cmd);
-
-        self.system.tick(cmd, q)
-    }
-
-    #[inline]
-    fn tear_down(&mut self) {
-        self.system.tear_down();
-    }
-}
-
-pub struct WithRenderer<S, R> {
-    system: S,
+pub struct RenderGen<'a, E, R> {
+    env: &'a mut E,
     renderer: R,
 }
-
-impl<M, I, E, S, R> GameSystem for WithRenderer<S, R>
+impl<'a, E, R> Generator for RenderGen<'a, E, R>
 where
-    S: GameSystem<Msg = M, InputCmd = I, GameOver = E>,
-    R: GameSystem<Msg = M, InputCmd = (), GameOver = Never>,
+    R: Render<Env = E>,
 {
-    type Msg = M;
-    type InputCmd = I;
-    type GameOver = ();
+    type Yield = ();
+    type Return = ();
 
-    #[inline]
-    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
-        self.system.start_up(q);
-        self.renderer.start_up(q);
-    }
-
-    #[inline]
-    fn tick(
-        &mut self,
-        cmd: Self::InputCmd,
-        q: &mut RenderQueue<Self::Msg>,
-    ) -> Result<(), Self::GameOver> {
-        self.system.tick(cmd, q).map_err(|_| ())?;
-
-        match self.renderer.tick((), q) {
-            Ok(_) => Ok(()),
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn tear_down(&mut self) {
-        self.renderer.tear_down();
-        self.system.tear_down();
-    }
-}
-impl<M, I, E, S, R> WithRenderer<S, R>
-where
-    S: GameSystem<Msg = M, InputCmd = I, GameOver = E>,
-    R: GameSystem<Msg = M, InputCmd = (), GameOver = Never>,
-    I: Copy,
-{
-    pub fn with_middlewares(self) -> WithMiddlewares<S, R, BoxedSystem<M, I, Never>> {
-        WithMiddlewares {
-            system: self,
-            middlewares: LinkedList::new(),
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+        match self.renderer.render(self.env) {
+            Some(_) => GeneratorState::Yielded(()),
+            _ => GeneratorState::Complete(()),
         }
     }
 }
 
-type BoxedSystem<M, I, E> = Box<GameSystem<Msg = M, InputCmd = I, GameOver = E>>;
-
-pub struct WithMiddlewares<S, R, W> {
-    system: WithRenderer<S, R>,
-    middlewares: LinkedList<W>,
-}
-
-impl<S, R, W> WithMiddlewares<S, R, W> {
-    pub fn add_middleware(mut self, w: W) -> Self {
-        self.middlewares.push_back(w);
-        self
-    }
-}
-
-impl<M, I, E, S, R> GameSystem for WithMiddlewares<S, R, BoxedSystem<M, I, Never>>
-where
-    S: GameSystem<Msg = M, InputCmd = I, GameOver = E>,
-    R: GameSystem<Msg = M, InputCmd = (), GameOver = Never>,
-    I: Copy,
-{
-    type Msg = M;
-    type InputCmd = I;
-    type GameOver = ();
-
-    #[inline]
-    fn start_up(&mut self, q: &mut RenderQueue<Self::Msg>) {
-        self.system.system.start_up(q);
-        for w in self.middlewares.iter_mut() {
-            w.start_up(q);
-        }
-        self.system.renderer.start_up(q);
-    }
-
-    #[inline]
-    fn tick(
-        &mut self,
-        cmd: Self::InputCmd,
-        q: &mut RenderQueue<Self::Msg>,
-    ) -> Result<(), Self::GameOver> {
-        self.system.system.tick(cmd, q).map_err(|_| ())?;
-
-        for w in self.middlewares.iter_mut() {
-            let _ = w.tick(cmd, q);
-        }
-        match self.system.renderer.tick((), q) {
-            Ok(_) => Ok(()),
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn tear_down(&mut self) {
-        self.system.system.tear_down();
-        for w in self.middlewares.iter_mut() {
-            w.tear_down();
-        }
-        self.system.renderer.tear_down();
-    }
-}
+/*
+ * struct Game<M> {
+ *     model: M,
+ * }
+ * impl<M: for<'a> Model<'a>> Game<M> {
+ *     #[allow(dead_code)]
+ *     fn run<'a, R, E>(&'a mut self, e: E) -> impl Generator<Yield = (), Return = ()> + 'a
+ *     where
+ *         R: Render<Env = E, Model = M>,
+ *         E: Clone + 'a,
+ *     {
+ *         let e = e.clone();
+ *         move || {
+ *             {
+ *                 let iter: <M::State as IntoIterator>::IntoIter =
+ *                     self.model.initialize().into_iter();
+ *                 for u in iter {
+ *                     yield_from!(R::new(u).into_generator(e.clone()));
+ *                 }
+ *             }
+ *
+ *             loop {
+ *                 let u = self.model.step(None);
+ *
+ *                 if let Ok(u) = u {
+ *                     yield_from!(R::new(u).into_generator(e.clone()));
+ *                 } else {
+ *                     return ();
+ *                 }
+ *             }
+ *         }
+ *     }
+ * }
+ */
