@@ -86,11 +86,22 @@ impl Block {
         // first bit is 1
         self.raw & 0b1000_0000 != 0
     }
-    #[inline(always)]
-    unsafe fn into_direction(self) -> Direction {
+    // this is memory safe but calling it in wrong place
+    // may result in logic errors
+    #[inline]
+    pub fn into_direction_unchecked(self) -> Direction {
         // keep only lower 2 bits, then turn on first bit
         let bits = self.raw & 0b0000_0011 | 0b1000_0000;
-        transmute(bits)
+        unsafe { transmute(bits) }
+    }
+
+    #[inline]
+    pub fn into_direction(self) -> Option<Direction> {
+        if self.is_snake() {
+            Some(self.into_direction_unchecked())
+        } else {
+            None
+        }
     }
 }
 
@@ -134,22 +145,28 @@ impl From<Block> for Tile {
     }
 }
 
-impl From<Block> for Direction {
-    fn from(b: Block) -> Direction {
-        debug_assert!(b.is_snake());
-
-        unsafe { b.into_direction() }
-    }
-}
 impl From<Direction> for Block {
     fn from(dir: Direction) -> Self {
         Block { raw: (dir as u8) }
     }
 }
 
+impl Into<Option<Direction>> for Block {
+    #[inline]
+    fn into(self) -> Option<Direction> {
+        self.into_direction()
+    }
+}
+
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
         Key { code }
+    }
+}
+
+impl Default for Key {
+    fn default() -> Self {
+        Key { code: 0 }
     }
 }
 
@@ -182,7 +199,7 @@ mod tests {
                     assert_eq!(tile, Tile::Snake);
                 }
 
-                let dir = b.into_direction();
+                let dir = b.into_direction_unchecked();
 
                 assert!(
                     dir == Direction::North

@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::convert::AsRef;
 use std::iter::{Fuse, IntoIterator, Map, Zip};
 use std::marker::PhantomData;
+use std::rc::Rc;
 use std::slice::Iter;
 
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
@@ -32,19 +33,13 @@ pub trait Model<'m> {
 
     fn tear_down(&mut self);
 
-    fn make_game<T, E>(self, cell: Cell<T>, env: E) -> Game<Self, Cell<T>, E>
+    #[inline]
+    fn make_game<E>(self, env: E) -> Box<Game<Self, E>>
     where
         Self: Sized,
-        // for<'m> <M as Model<'m>>::Update: Clone,
-        // M: 'static, // nice to have, but since the code compiles..
         E: 'static,
-        T: Into<Option<Self::Cmd>> + Copy + 'static,
     {
-        Game {
-            model: self,
-            env,
-            cell,
-        }
+        Box::new(Game { model: self, env })
     }
 
     /*
@@ -205,52 +200,49 @@ where
     }
 }
 
-pub struct Game<M, C, E> {
+pub struct Game<M, E> {
     model: M,
-    cell: C,
     env: E,
 }
-impl<M, T, Cmd, U, E> Game<M, Cell<T>, E>
+impl<M, Cmd, U, E> Game<M, E>
 where
     M: for<'m> Model<'m, Update = U, Cmd = Cmd>,
-    // for<'m> <M as Model<'m>>::Update: Clone,
     // M: 'static, // nice to have, but since the code compiles..
     E: 'static,
-    T: Into<Option<Cmd>> + Copy + 'static,
-    U: ::std::fmt::Debug,
+    // U: ::std::fmt::Debug,
 {
     #[allow(dead_code)]
-    pub fn create<'a, R>(&'a mut self) -> impl Generator<Yield = (), Return = ()> + 'a
+    pub fn create<R, T>(self: Box<Self>) -> (Rc<Cell<T>>, impl Generator<Yield = (), Return = ()>)
     where
         R: Render<Env = E, Update = U>,
+        T: Into<Option<Cmd>> + Copy + 'static + Default,
     {
-        move || loop {
+        let this = Box::leak(self);
+        let cell = Rc::new(Cell::new(T::default()));
+
+        (cell.clone(), move || loop {
             {
-                let iter = self.model.initialize();
+                let iter = this.model.initialize();
                 for u in iter {
-                    let renderer = R::create(u, &mut self.env);
-                    yield_from!(renderer.render_into(&mut self.env));
+                    let renderer = R::create(u, &mut this.env);
+                    yield_from!(renderer.render_into(&mut this.env));
                 }
             }
 
             loop {
-                let update = self.cell.get().into();
+                let update = cell.get().into();
 
-                let u = self.model.step(update);
+                let u = this.model.step(update);
 
                 if let Ok(u) = u {
-                    let renderer = R::create(u, &mut self.env);
-                    yield_from!(renderer.render_into(&mut self.env));
+                    let renderer = R::create(u, &mut this.env);
+                    yield_from!(renderer.render_into(&mut this.env));
                 } else {
                     break;
                 }
             }
 
-            self.model.tear_down();
-        }
-    }
-
-    pub fn input(&self, cmd: T) {
-        self.cell.set(cmd);
+            this.model.tear_down();
+        })
     }
 }

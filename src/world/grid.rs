@@ -80,19 +80,14 @@ impl Grid {
     #[cfg(test)]
     fn get_prev_snake_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
+        let dir: Direction = b.into_direction()?;
+        let dir = dir.opposite();
 
-        if b.is_snake() {
-            let dir = Direction::from(b);
-            let dir = dir.opposite();
+        let prev_coord = coord.move_towards(dir);
+        let prev_block = self.get_block(prev_coord);
 
-            let prev_coord = coord.move_towards(dir);
-            let prev_block = self.get_block(prev_coord);
-
-            if prev_block.is_snake() {
-                Some(prev_block)
-            } else {
-                None
-            }
+        if prev_block.is_snake() {
+            Some(prev_block)
         } else {
             None
         }
@@ -101,17 +96,13 @@ impl Grid {
     fn get_next_snake_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
 
-        if b.is_snake() {
-            let dir = Direction::from(b);
+        let dir = b.into_direction()?;
 
-            let next_coord = coord.move_towards(dir);
-            let next_block = self.get_block(next_coord);
+        let next_coord = coord.move_towards(dir);
+        let next_block = self.get_block(next_coord);
 
-            if next_block.is_snake() {
-                Some(next_block)
-            } else {
-                None
-            }
+        if next_block.is_snake() {
+            Some(next_block)
         } else {
             None
         }

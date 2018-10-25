@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(pin, arbitrary_self_types, generators, generator_trait)]
 
 extern crate js_sys;
 extern crate void;
@@ -9,8 +9,6 @@ extern crate arraydeque;
 extern crate either;
 extern crate rand;
 extern crate smallvec;
-#[macro_use]
-extern crate lazy_static;
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Deref, DerefMut, Generator, GeneratorState};
@@ -68,12 +66,6 @@ extern "C" {
  *
  */
 
-type SnakeGame = Game<World<SmallRng>, Cell<Key>, CanvasEnv>;
-
-fn unsafe_static<T>(game: &mut T) -> &'static mut T {
-    unsafe { &mut *(game as *mut T) }
-}
-
 #[wasm_bindgen]
 pub fn main() {
     let world = WorldBuilder::new()
@@ -86,16 +78,14 @@ pub fn main() {
         .extend(Direction::East)
         .build_with_seed::<SmallRng>([123; 16]);
 
-    let mut game = world.make_game(Cell::new(Key::from(0)), CanvasEnv::new());
-    let mut game = Box::new(game);
+    let game = world.make_game(CanvasEnv::new());
 
-    let game_static_ref: &'static mut SnakeGame = unsafe_static(&mut game);
-    let mut generator = game_static_ref.create::<BlockRenderer<_>>();
+    let (cell, mut generator) = game.create::<BlockRenderer<_>, Key>();
 
     let each_tick = Closure::wrap(Box::new(move |key: u8| {
         let key = Key::from(key);
 
-        game.input(key);
+        cell.set(key);
 
         unsafe {
             generator.resume();
@@ -103,6 +93,7 @@ pub fn main() {
     }) as Box<FnMut(_)>);
 
     let game_loop = GameLoop::new(&each_tick);
+
     game_loop.start();
 
     each_tick.forget();

@@ -4,7 +4,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
-use data::Direction;
+use data::{Direction, Tile};
 use system::{CanvasTile, Render};
 use world::WorldUpdate;
 
@@ -93,27 +93,31 @@ impl CanvasTile for WorldUpdate {
                 let x = f64::from(at.x) * TILE_SIZE;
                 let y = f64::from(at.y) * TILE_SIZE;
 
-                if block.is_snake() {
-                    let ts = TILE_SIZE;
-                    let dir = Direction::from(*block);
-                    let length = normalized_progress * ts;
-                    match dir {
-                        Direction::North => gc.fill_rect(x, y + ts - length, ts, length),
-                        Direction::South => gc.fill_rect(x, y, ts, length),
-                        Direction::East => gc.fill_rect(x, y, length, ts),
-                        Direction::West => gc.fill_rect(x + ts - length, y, length, ts),
+                match Tile::from(*block) {
+                    Tile::Snake => {
+                        let ts = TILE_SIZE;
+                        let dir = block.into_direction_unchecked();
+                        let length = normalized_progress * ts;
+                        match dir {
+                            Direction::North => gc.fill_rect(x, y + ts - length, ts, length),
+                            Direction::South => gc.fill_rect(x, y, ts, length),
+                            Direction::East => gc.fill_rect(x, y, length, ts),
+                            Direction::West => gc.fill_rect(x + ts - length, y, length, ts),
+                        }
                     }
-                } else if block.is_food() {
-                    let r_full = TILE_SIZE / 2.0;
-                    let r = r_full * normalized_progress;
-                    gc.save();
+                    Tile::Food => {
+                        let r_full = TILE_SIZE / 2.0;
+                        let r = r_full * normalized_progress;
+                        gc.save();
 
-                    gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
-                    gc.begin_path();
-                    let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
-                    gc.fill();
+                        gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
+                        gc.begin_path();
+                        let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
+                        gc.fill();
 
-                    gc.restore();
+                        gc.restore();
+                    }
+                    _ => {}
                 }
             }
             WorldUpdate::Clear { prev_block, at } => {
@@ -121,18 +125,21 @@ impl CanvasTile for WorldUpdate {
                 let y = f64::from(at.y) * TILE_SIZE;
 
                 let ts = TILE_SIZE;
+                let dir: Option<Direction> = (*prev_block).into();
 
-                if prev_block.is_snake() {
-                    let dir = Direction::from(*prev_block);
-                    let length = normalized_progress * ts;
-                    match dir {
-                        Direction::North => gc.clear_rect(x, y + ts - length, ts, length),
-                        Direction::South => gc.clear_rect(x, y, ts, length),
-                        Direction::East => gc.clear_rect(x, y, length, ts),
-                        Direction::West => gc.clear_rect(x + ts - length, y, length, ts),
+                match dir {
+                    Some(dir) => {
+                        let length = normalized_progress * ts;
+                        match dir {
+                            Direction::North => gc.clear_rect(x, y + ts - length, ts, length),
+                            Direction::South => gc.clear_rect(x, y, ts, length),
+                            Direction::East => gc.clear_rect(x, y, length, ts),
+                            Direction::West => gc.clear_rect(x + ts - length, y, length, ts),
+                        }
                     }
-                } else if normalized_progress == 1.0 {
-                    gc.clear_rect(x, y, ts, ts);
+                    _ => {
+                        gc.clear_rect(x, y, ts, ts);
+                    }
                 }
             }
         }

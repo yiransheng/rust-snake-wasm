@@ -97,7 +97,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
 impl<R: Rng> World<R> {
     fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
-        let head_dir: Direction = self.get_block(head).into();
+        let head_dir: Direction = self.get_block(head).into_direction_unchecked();
 
         if dir != head_dir.opposite() {
             self.set_block(head, dir);
@@ -125,7 +125,9 @@ impl<R: Rng> World<R> {
 
     fn motion(&mut self) -> Result<Block> {
         let head_block = self.get_block(self.head);
-        let next_head = self.head.move_towards(head_block.into());
+        let next_head = self
+            .head
+            .move_towards(head_block.into_direction_unchecked());
         let next_head_block = self.get_block(next_head);
 
         match next_head_block.into() {
@@ -144,7 +146,7 @@ impl<R: Rng> World<R> {
             Tile::Empty => {
                 let tail = self.tail;
                 let tail_block = self.get_block(tail);
-                let next_tail = tail.move_towards(tail_block.into());
+                let next_tail = tail.move_towards(tail_block.into_direction_unchecked());
 
                 self.tail = next_tail;
 
@@ -213,14 +215,16 @@ impl<'a> Iterator for SnakeIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let block = self.grid.get_block(self.at);
 
-        if block.is_snake() {
-            let dir = Direction::from(block);
-            let current = self.at;
-            let next = current.move_towards(dir);
-            self.at = next;
-            Some((current, dir))
-        } else {
-            None
+        match block.into() {
+            Some(dir) => {
+                let current = self.at;
+                let next = current.move_towards(dir);
+
+                self.at = next;
+
+                Some((current, dir))
+            }
+            _ => None,
         }
     }
 }
