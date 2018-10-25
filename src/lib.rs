@@ -17,9 +17,10 @@ use rand::rngs::SmallRng;
 #[macro_use]
 mod macros;
 
+mod constants;
 // mod acceleration;
 mod data;
-// mod renderers;
+mod renderers;
 mod system;
 mod world;
 

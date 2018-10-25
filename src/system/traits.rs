@@ -5,6 +5,8 @@ use std::iter::{Fuse, IntoIterator, Map, Zip};
 use std::marker::PhantomData;
 use std::slice::Iter;
 
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
 use std::ops::{Generator, GeneratorState};
 
 use void::Void;
@@ -63,6 +65,13 @@ pub trait Render {
             renderer: self,
         }
     }
+}
+
+pub trait DrawTile {
+    // normalized_progress 0 to 1 inclusive
+    fn draw_tile(&self, gc: &CanvasRenderingContext2d, normalized_progress: f64);
+
+    fn setup_canvas(&self, canvas: &HtmlCanvasElement);
 }
 
 pub struct Join<L, R, F> {
