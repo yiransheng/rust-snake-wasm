@@ -22,6 +22,7 @@ pub enum WorldUpdate {
     SetWorldSize(u32, u32),
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum UpdateError {
     OutOfBound,
     CollideBody,
@@ -75,15 +76,20 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
 
         match self.state {
             SnakeState::Eaten => {
-                let block = self.motion()?;
+                let block = self.motion();
+                let block = block?;
                 self.state = SnakeState::Consuming(block.into());
 
                 Ok(WorldUpdate::SetBlock {
-                    block,
+                    block: self.get_block(self.head),
                     at: self.head,
                 })
             }
-            SnakeState::Consuming(tile) => self.digest(tile),
+            SnakeState::Consuming(tile) => {
+                let r = self.digest(tile)?;
+                self.state = SnakeState::Eaten;
+                Ok(r)
+            }
         }
     }
 }
@@ -91,7 +97,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
 impl<R: Rng> World<R> {
     fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
-        let head_dir: Direction = self.grid.get_block(head).into();
+        let head_dir: Direction = self.get_block(head).into();
 
         if dir != head_dir.opposite() {
             self.set_block(head, dir);
@@ -141,6 +147,8 @@ impl<R: Rng> World<R> {
                 let next_tail = tail.move_towards(tail_block.into());
 
                 self.tail = next_tail;
+
+                self.set_block(tail, Block::empty());
 
                 Ok(WorldUpdate::Clear {
                     prev_block: tail_block,
@@ -248,7 +256,6 @@ impl<'a, R: Rng> Iterator for Initializer<'a, R> {
             }
             Initializer::SnakeIter(mut iter) => {
                 let (at, dir) = iter.next()?;
-
                 *self = Initializer::SnakeIter(iter);
 
                 Some(WorldUpdate::SetBlock {

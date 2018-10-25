@@ -9,10 +9,16 @@ extern crate arraydeque;
 extern crate either;
 extern crate rand;
 extern crate smallvec;
+#[macro_use]
+extern crate lazy_static;
 
-use wasm_bindgen::prelude::*;
+use std::cell::{Cell, RefCell};
+use std::ops::{Deref, DerefMut, Generator, GeneratorState};
+use std::rc::Rc;
+use std::sync::Mutex;
 
 use rand::rngs::SmallRng;
+use wasm_bindgen::prelude::*;
 
 #[macro_use]
 mod macros;
@@ -25,7 +31,9 @@ mod system;
 mod world;
 
 use data::{Direction, Key};
-use world::WorldBuilder;
+use renderers::{BlockRenderer, CanvasEnv};
+use system::{Game, Model, Render};
+use world::{World, WorldBuilder, WorldUpdate};
 
 #[wasm_bindgen(module = "./game-loop")]
 extern "C" {
@@ -41,30 +49,61 @@ extern "C" {
     fn stop(this: &GameLoop) -> bool;
 }
 
+/*
+ * lazy_static! {
+ *     static ref GAME: Mutex<Game<World<SmallRng>, Cell<Key>, CanvasEnv>> = {
+ *         let world = WorldBuilder::new()
+ *             .width(64)
+ *             .height(32)
+ *             .set_snake(1, 1)
+ *             .extend(Direction::East)
+ *             .extend(Direction::East)
+ *             .extend(Direction::East)
+ *             .extend(Direction::East)
+ *             .build_with_seed::<SmallRng>([123; 16]);
+ *
+ *         Mutex::new(world.make_game(Cell::new(Key::from(0)), CanvasEnv::new()))
+ *     };
+ * }
+ *
+ */
+
+type SnakeGame = Game<World<SmallRng>, Cell<Key>, CanvasEnv>;
+
+fn unsafe_static<T>(game: &mut T) -> &'static mut T {
+    unsafe { &mut *(game as *mut T) }
+}
+
 #[wasm_bindgen]
 pub fn main() {
-    /*
-     * let world = WorldBuilder::new()
-     *     .width(64)
-     *     .height(32)
-     *     .set_snake(1, 1)
-     *     .extend(Direction::East)
-     *     .extend(Direction::East)
-     *     .extend(Direction::East)
-     *     .extend(Direction::East)
-     *     .build_with_seed::<SmallRng>([123; 16]);
-     */
+    let world = WorldBuilder::new()
+        .width(64)
+        .height(32)
+        .set_snake(1, 1)
+        .extend(Direction::East)
+        .extend(Direction::East)
+        .extend(Direction::East)
+        .extend(Direction::East)
+        .build_with_seed::<SmallRng>([123; 16]);
 
-    // let game = world
-    // .map_input(|key: Key| key.into())
-    // .with_renderer(CanvasRenderer::new())
-    // .with_middlewares()
-    // .add_middleware(Box::new(AccMiddleware::new()))
-    // .with_play_state();
+    let mut game = world.make_game(Cell::new(Key::from(0)), CanvasEnv::new());
+    let mut game = Box::new(game);
 
-    // let each_tick = game.into_closure();
+    let game_static_ref: &'static mut SnakeGame = unsafe_static(&mut game);
+    let mut generator = game_static_ref.create::<BlockRenderer<_>>();
 
-    // GameLoop::new(&each_tick).start();
+    let each_tick = Closure::wrap(Box::new(move |key: u8| {
+        let key = Key::from(key);
 
-    // each_tick.forget();
+        game.input(key);
+
+        unsafe {
+            generator.resume();
+        }
+    }) as Box<FnMut(_)>);
+
+    let game_loop = GameLoop::new(&each_tick);
+    game_loop.start();
+
+    each_tick.forget();
 }
