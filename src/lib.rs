@@ -80,12 +80,12 @@ pub fn main() {
 
     let game = world.make_game(CanvasEnv::new());
 
-    let (cell, mut generator) = game.create::<BlockRenderer<_>, Key>();
+    let (cmd_buffer, mut generator) = game.create::<BlockRenderer<_>, Key>();
 
     let each_tick = Closure::wrap(Box::new(move |key: u8| {
         let key = Key::from(key);
 
-        cell.set(key);
+        cmd_buffer.borrow_mut().write(key);
 
         unsafe {
             generator.resume();

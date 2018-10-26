@@ -69,7 +69,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
         self.reset();
     }
 
-    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update> {
+    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>> {
         if let Some(dir) = cmd {
             self.set_direction(dir);
         }
@@ -80,27 +80,30 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
                 let block = block?;
                 self.state = SnakeState::Consuming(block.into());
 
-                Ok(WorldUpdate::SetBlock {
+                Ok(Some(WorldUpdate::SetBlock {
                     block: self.get_block(self.head),
                     at: self.head,
-                })
+                }))
             }
             SnakeState::Consuming(tile) => {
                 let r = self.digest(tile)?;
                 self.state = SnakeState::Eaten;
-                Ok(r)
+                Ok(Some(r))
             }
         }
     }
 }
 
 impl<R: Rng> World<R> {
-    fn set_direction(&mut self, dir: Direction) {
+    fn set_direction(&mut self, dir: Direction) -> bool {
         let head = self.head;
         let head_dir: Direction = self.get_block(head).into_direction_unchecked();
 
-        if dir != head_dir.opposite() {
+        if dir != head_dir.opposite() && dir != head_dir {
             self.set_block(head, dir);
+            true
+        } else {
+            false
         }
     }
 

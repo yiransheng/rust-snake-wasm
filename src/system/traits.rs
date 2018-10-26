@@ -1,5 +1,4 @@
-use std::borrow::Borrow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
 use std::convert::AsRef;
 use std::iter::{Fuse, IntoIterator, Map, Zip};
@@ -11,7 +10,10 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use std::ops::{Generator, GeneratorState};
 
+use arraydeque::{ArrayDeque, Wrapping};
 use void::Void;
+
+use constants::ANIMATION_FRAME_COUNT;
 
 pub struct GameOver;
 
@@ -29,7 +31,7 @@ pub trait Model<'m> {
 
     fn initialize(&'m mut self) -> Self::State;
 
-    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error>;
+    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>, Self::Error>;
 
     fn tear_down(&mut self);
 
@@ -130,57 +132,59 @@ pub trait CanvasTile {
  * }
  *
  */
-pub struct Empty<C, U> {
-    _cmd: PhantomData<C>,
-    _update: PhantomData<U>,
-}
-
-impl<'m, C, U> Model<'m> for Empty<C, U>
-where
-    U: 'm,
-{
-    type Cmd = C;
-    type Update = U;
-    type Error = GameOver;
-    type State = ::std::iter::Empty<U>;
-
-    fn initialize(&'m mut self) -> Self::State {
-        ::std::iter::empty()
-    }
-
-    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
-        Err(GameOver)
-    }
-
-    fn tear_down(&mut self) {}
-}
-
-pub struct Replay<C, U> {
-    _cmd: PhantomData<C>,
-    updates: Vec<U>,
-    index: usize,
-}
-impl<'m, C, U> Model<'m> for Replay<C, U>
-where
-    U: Clone + 'm,
-{
-    type Cmd = C;
-    type Update = U;
-    type Error = GameOver;
-    type State = ::std::iter::Empty<U>;
-
-    fn initialize(&'m mut self) -> Self::State {
-        self.index = 0;
-        ::std::iter::empty()
-    }
-
-    fn step(&mut self, _cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
-        self.updates.get(self.index).cloned().ok_or(GameOver)
-    }
-
-    fn tear_down(&mut self) {}
-}
-
+/*
+ * pub struct Empty<C, U> {
+ *     _cmd: PhantomData<C>,
+ *     _update: PhantomData<U>,
+ * }
+ *
+ * impl<'m, C, U> Model<'m> for Empty<C, U>
+ * where
+ *     U: 'm,
+ * {
+ *     type Cmd = C;
+ *     type Update = U;
+ *     type Error = GameOver;
+ *     type State = ::std::iter::Empty<U>;
+ *
+ *     fn initialize(&'m mut self) -> Self::State {
+ *         ::std::iter::empty()
+ *     }
+ *
+ *     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
+ *         Err(GameOver)
+ *     }
+ *
+ *     fn tear_down(&mut self) {}
+ * }
+ *
+ * pub struct Replay<C, U> {
+ *     _cmd: PhantomData<C>,
+ *     updates: Vec<U>,
+ *     index: usize,
+ * }
+ * impl<'m, C, U> Model<'m> for Replay<C, U>
+ * where
+ *     U: Clone + 'm,
+ * {
+ *     type Cmd = C;
+ *     type Update = U;
+ *     type Error = GameOver;
+ *     type State = ::std::iter::Empty<U>;
+ *
+ *     fn initialize(&'m mut self) -> Self::State {
+ *         self.index = 0;
+ *         ::std::iter::empty()
+ *     }
+ *
+ *     fn step(&mut self, _cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
+ *         self.updates.get(self.index).cloned().ok_or(GameOver)
+ *     }
+ *
+ *     fn tear_down(&mut self) {}
+ * }
+ *
+ */
 pub struct RenderGen<'a, E, R> {
     env: &'a mut E,
     renderer: R,
@@ -200,6 +204,78 @@ where
     }
 }
 
+type CmdBuffer<T> = ArrayDeque<[T; ANIMATION_FRAME_COUNT as usize], Wrapping>;
+
+pub struct CmdDoubleBuffer<T> {
+    swapped: bool,
+
+    first: CmdBuffer<T>,
+    second: CmdBuffer<T>,
+}
+
+impl<T> CmdDoubleBuffer<T> {
+    fn new() -> Self {
+        CmdDoubleBuffer {
+            swapped: false,
+            first: ArrayDeque::new(),
+            second: ArrayDeque::new(),
+        }
+    }
+
+    pub fn write(&mut self, x: T) -> Option<()>
+    where
+        T: Eq,
+    {
+        let next = self.next();
+
+        match next.back() {
+            Some(prev) if prev == &x => {
+                return None;
+            }
+            _ => {}
+        }
+
+        next.push_back(x);
+        Some(())
+    }
+
+    fn current(&mut self) -> &mut CmdBuffer<T> {
+        if self.swapped {
+            &mut self.first
+        } else {
+            &mut self.second
+        }
+    }
+    fn next(&mut self) -> &mut CmdBuffer<T> {
+        if self.swapped {
+            &mut self.second
+        } else {
+            &mut self.first
+        }
+    }
+    fn swap_if<F>(&mut self, f: F)
+    where
+        F: Fn(&CmdBuffer<T>) -> bool,
+    {
+        let should_swap;
+        {
+            let next = &*self.next();
+            should_swap = f(next);
+        }
+        if should_swap {
+            self.swapped = !self.swapped;
+            self.next().clear();
+        }
+    }
+    fn read(&mut self) -> Option<T> {
+        self.current().pop_front()
+    }
+    fn clear_both(&mut self) {
+        self.first.clear();
+        self.second.clear();
+    }
+}
+
 pub struct Game<M, E> {
     model: M,
     env: E,
@@ -207,20 +283,23 @@ pub struct Game<M, E> {
 impl<M, Cmd, U, E> Game<M, E>
 where
     M: for<'m> Model<'m, Update = U, Cmd = Cmd>,
-    // M: 'static, // nice to have, but since the code compiles..
     E: 'static,
-    // U: ::std::fmt::Debug,
 {
     #[allow(dead_code)]
-    pub fn create<R, T>(self: Box<Self>) -> (Rc<Cell<T>>, impl Generator<Yield = (), Return = ()>)
+    pub fn create<R, T>(
+        self: Box<Self>,
+    ) -> (
+        Rc<RefCell<CmdDoubleBuffer<T>>>,
+        impl Generator<Yield = (), Return = ()>,
+    )
     where
         R: Render<Env = E, Update = U>,
-        T: Into<Option<Cmd>> + Copy + 'static + Default,
+        T: Into<Option<Cmd>> + Copy + 'static + Eq + ::std::fmt::Debug,
     {
         let this = Box::leak(self);
-        let cell = Rc::new(Cell::new(T::default()));
+        let buf = Rc::new(RefCell::new(CmdDoubleBuffer::new()));
 
-        (cell.clone(), move || loop {
+        (buf.clone(), move || loop {
             {
                 let iter = this.model.initialize();
                 for u in iter {
@@ -230,18 +309,28 @@ where
             }
 
             loop {
-                let update = cell.get().into();
+                // console_log!("Tick Start Current: {:?}", buf.borrow_mut().current());
+                // console_log!("Tick Start Next   : {:?}", buf.borrow_mut().next());
 
-                let u = this.model.step(update);
+                let cmd = buf.borrow_mut().read().and_then(|c| c.into());
+                let update = this.model.step(cmd);
 
-                if let Ok(u) = u {
-                    let renderer = R::create(u, &mut this.env);
-                    yield_from!(renderer.render_into(&mut this.env));
-                } else {
-                    break;
+                match update {
+                    Ok(Some(u)) => {
+                        let renderer = R::create(u, &mut this.env);
+                        yield_from!(renderer.render_into(&mut this.env));
+                    }
+                    Ok(None) => yield (),
+                    Err(_) => break,
                 }
+
+                // console_log!("Current: {:?}", buf.borrow_mut().current());
+                // console_log!("Next   : {:?}", buf.borrow_mut().next());
+                buf.borrow_mut()
+                    .swap_if(|b| b.iter().any(|&t| t.into().is_some()));
             }
 
+            buf.borrow_mut().clear_both();
             this.model.tear_down();
         })
     }
