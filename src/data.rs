@@ -107,27 +107,56 @@ impl Block {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Coordinate {
-    pub x: i32,
-    pub y: i32,
+    pub x: u32,
+    pub y: u32,
 }
 
 impl Coordinate {
-    pub fn new(x: i32, y: i32) -> Self {
+    pub fn new(x: u32, y: u32) -> Self {
         Coordinate { x, y }
     }
     pub fn from_usize(x: usize, y: usize) -> Self {
         Coordinate {
-            x: x as i32,
-            y: y as i32,
+            x: x as u32,
+            y: y as u32,
         }
     }
     pub fn move_towards(self, dir: Direction) -> Self {
         let Coordinate { x, y } = self;
         match dir {
-            Direction::North => Coordinate { x, y: y - 1 },
-            Direction::South => Coordinate { x, y: y + 1 },
-            Direction::East => Coordinate { x: x + 1, y },
-            Direction::West => Coordinate { x: x - 1, y },
+            Direction::North => Coordinate {
+                x,
+                y: y.wrapping_sub(1), // dealing with -1
+            },
+            Direction::South => Coordinate {
+                x,
+                y: y.wrapping_add(1),
+            },
+            Direction::East => Coordinate {
+                x: x.wrapping_add(1),
+                y,
+            },
+            Direction::West => Coordinate {
+                x: x.wrapping_sub(1),
+                y,
+            },
+        }
+    }
+    #[inline]
+    pub fn inside(self, width: u32, height: u32) -> Option<Self> {
+        if self.x < width && self.y < height {
+            Some(self)
+        } else {
+            None
+        }
+    }
+    #[inline]
+    pub fn wrap_inside(self, width: u32, height: u32) -> Self {
+        let Coordinate { x, y } = self;
+
+        Coordinate {
+            x: x.wrapping_add(width) % width,
+            y: y.wrapping_add(height) % height,
         }
     }
 }

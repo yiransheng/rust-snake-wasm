@@ -29,7 +29,7 @@ impl WorldBuilder {
         self.height = height;
         self
     }
-    pub fn set_snake(self, x: i32, y: i32) -> SnakeBuilder {
+    pub fn set_snake(self, x: u32, y: u32) -> SnakeBuilder {
         let grid = Grid::empty(self.width, self.height);
         let tail = Coordinate::new(x, y);
 

@@ -3,8 +3,8 @@ use rand::Rng;
 
 pub struct Grid {
     blocks: Vec<Block>,
-    width: i32,
-    height: i32,
+    width: u32,
+    height: u32,
 }
 
 // Storage of game data
@@ -12,17 +12,17 @@ pub struct Grid {
 impl Grid {
     pub(super) fn empty(width: u32, height: u32) -> Self {
         Grid {
-            width: width as i32,
-            height: height as i32,
+            width: width as u32,
+            height: height as u32,
             blocks: vec![Block::empty(); (width * height) as usize],
         }
     }
 
     pub(super) fn width(&self) -> u32 {
-        self.width as u32
+        self.width
     }
     pub(super) fn height(&self) -> u32 {
-        self.height as u32
+        self.height
     }
 
     pub(super) fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
@@ -66,15 +66,12 @@ impl Grid {
     }
 
     fn find_index(&self, coord: Coordinate) -> Option<usize> {
-        let Coordinate { x, y } = coord;
         let width = self.width;
         let height = self.height;;
 
-        if x < 0 || x >= width || y < 0 || y >= height {
-            None
-        } else {
-            Some((y * width + x) as usize)
-        }
+        coord
+            .inside(width, height)
+            .map(|Coordinate { x, y }| (y * width + x) as usize)
     }
 
     #[cfg(test)]
