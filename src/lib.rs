@@ -1,4 +1,10 @@
-#![feature(pin, arbitrary_self_types, generators, generator_trait)]
+#![feature(
+    type_ascription,
+    try_from,
+    arbitrary_self_types,
+    generators,
+    generator_trait
+)]
 
 extern crate js_sys;
 extern crate void;

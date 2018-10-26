@@ -44,22 +44,20 @@ pub trait Model<'m> {
         Box::new(Game { model: self, env })
     }
 
-    /*
-     * #[inline]
-     * fn join<R, F, T>(self, other: R, f: F) -> Join<Self, R, F>
-     * where
-     *     R: Model<'m, Cmd = Self::Cmd, Error = Void>,
-     *     F: Fn((Self::Update, R::Update)) -> T + 'm,
-     *     Self::Cmd: Copy,
-     *     Self: Sized,
-     * {
-     *     Join {
-     *         left: self,
-     *         right: other,
-     *         f,
-     *     }
-     * }
-     */
+    #[inline]
+    fn zip_with<T, R, F>(self, other: R, f: F) -> ZipWith<Self, R, F>
+    where
+        R: Model<'m, Cmd = Self::Cmd, Error = Void>,
+        F: Fn((Self::Update, R::Update)) -> T + 'm,
+        Self::Cmd: Copy,
+        Self: Sized,
+    {
+        ZipWith {
+            left: self,
+            right: other,
+            f,
+        }
+    }
 }
 
 pub trait Render {
@@ -89,49 +87,52 @@ pub trait CanvasTile {
     fn setup_canvas(&self, canvas: &HtmlCanvasElement);
 }
 
-/*
- * pub struct Join<L, R, F> {
- *     left: L,
- *     right: R,
- *     f: F,
- * }
- *
- * impl<'m, L, R, T, F> Model<'m> for Join<L, R, F>
- * where
- *     L: Model<'m>,
- *     R: Model<'m, Cmd = L::Cmd, Error = Void>,
- *     F: Fn((L::Update, R::Update)) -> T + 'm,
- *     L::Cmd: Copy,
- * {
- *     type Cmd = L::Cmd;
- *     type Update = T;
- *     type State = Map<Zip<Fuse<L::State>, Fuse<R::State>>, &'m F>;
- *     type Error = L::Error;
- *
- *     fn initialize(&'m mut self) -> Self::State {
- *         self.left
- *             .initialize()
- *             .fuse()
- *             .zip(self.right.initialize().fuse())
- *             .map(&self.f)
- *     }
- *
- *     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
- *         let ul = self.left.step(cmd)?;
- *         let ur = self.right.step(cmd).unwrap();
- *
- *         let update = (self.f)((ul, ur));
- *
- *         Ok(update)
- *     }
- *
- *     fn tear_down(&mut self) {
- *         self.right.tear_down();
- *         self.left.tear_down();
- *     }
- * }
- *
- */
+pub struct ZipWith<L, R, F> {
+    left: L,
+    right: R,
+    f: F,
+}
+
+impl<'m, L, R, T, F> Model<'m> for ZipWith<L, R, F>
+where
+    L: Model<'m>,
+    R: Model<'m, Cmd = L::Cmd, Error = Void>,
+    F: Fn((L::Update, R::Update)) -> T + 'm,
+    L::Cmd: Copy,
+{
+    type Cmd = L::Cmd;
+    type Update = T;
+    type State =
+        Map<Zip<<L::State as IntoIterator>::IntoIter, <R::State as IntoIterator>::IntoIter>, &'m F>;
+    type Error = L::Error;
+
+    fn initialize(&'m mut self) -> Self::State {
+        self.left
+            .initialize()
+            .into_iter()
+            .zip(self.right.initialize().into_iter())
+            .map(&self.f)
+    }
+
+    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>, Self::Error> {
+        let ul = self.left.step(cmd)?;
+        let ur = self.right.step(cmd).unwrap();
+
+        match (ul, ur) {
+            (Some(x), Some(y)) => {
+                let update = (self.f)((x, y));
+                Ok(Some(update))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn tear_down(&mut self) {
+        self.right.tear_down();
+        self.left.tear_down();
+    }
+}
+
 /*
  * pub struct Empty<C, U> {
  *     _cmd: PhantomData<C>,

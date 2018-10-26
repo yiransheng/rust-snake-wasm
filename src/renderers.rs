@@ -5,7 +5,7 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
 use data::{Direction, Tile};
-use system::{CanvasTile, Render};
+use system::{CanvasTile, Color, DrawGrid, Render, UnitInterval};
 use world::WorldUpdate;
 
 pub struct CanvasEnv {
@@ -41,36 +41,95 @@ impl CanvasEnv {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum RenderStep {
+    Instant,
+    Frames(u8),
+}
+impl Default for RenderStep {
+    fn default() -> Self {
+        RenderStep::Frames(1)
+    }
+}
+impl RenderStep {
+    pub fn from_frame_count(f: u8) -> Self {
+        match f {
+            0 => RenderStep::Frames(1),
+            x if x < ANIMATION_FRAME_COUNT => RenderStep::Frames(x),
+            _ => RenderStep::Instant,
+        }
+    }
+    pub fn from_factor(f: f64) -> Self {
+        if f <= 0.0 || f > 1.0 {
+            RenderStep::Frames(ANIMATION_FRAME_COUNT)
+        } else {
+            let frames = (ANIMATION_FRAME_COUNT as f64) * f;
+            let frames = frames.ceil() as u8;
+
+            RenderStep::Frames(frames)
+        }
+    }
+}
+
 pub struct BlockRenderer<J> {
     current_frame: u8,
     job: J,
+    render_step: RenderStep,
 }
-impl<J> BlockRenderer<J> {}
 
-impl<J: CanvasTile> Render for BlockRenderer<J> {
+impl<J> Render for BlockRenderer<J>
+where
+    J: CanvasTile + Copy + Into<RenderStep>,
+{
     type Update = J;
     type Env = CanvasEnv;
 
     fn create(u: Self::Update, env: &mut Self::Env) -> Self {
         u.setup_canvas(&env.canvas);
 
+        let render_step = u.into();
+
         BlockRenderer {
             current_frame: 0,
             job: u,
+            render_step,
         }
     }
 
     fn render(&mut self, env: &mut Self::Env) -> Option<()> {
-        if self.current_frame >= ANIMATION_FRAME_COUNT {
-            self.job.draw_tile(&env.gc, 1.0);
-            None
-        } else {
-            let progress = (self.current_frame as f64) / (ANIMATION_FRAME_COUNT as f64);
-            self.job.draw_tile(&env.gc, progress);
+        match self.render_step {
+            RenderStep::Instant => {
+                self.job.draw_tile(&env.gc, 1.0);
+                None
+            }
+            RenderStep::Frames(step) => {
+                if self.current_frame >= ANIMATION_FRAME_COUNT {
+                    self.job.draw_tile(&env.gc, 1.0);
+                    None
+                } else {
+                    let progress = (self.current_frame as f64) / (ANIMATION_FRAME_COUNT as f64);
+                    self.job.draw_tile(&env.gc, progress);
 
-            self.current_frame += 1;
-            Some(())
+                    self.current_frame += if step > 0 { step } else { 1 };
+                    Some(())
+                }
+            }
         }
+    }
+}
+
+impl Into<RenderStep> for WorldUpdate {
+    fn into(self) -> RenderStep {
+        match self {
+            WorldUpdate::SetWorldSize(_, _) => RenderStep::Instant,
+            _ => RenderStep::default(),
+        }
+    }
+}
+
+impl<T> From<(RenderStep, T)> for RenderStep {
+    fn from(tp: (RenderStep, T)) -> RenderStep {
+        tp.0
     }
 }
 
@@ -142,6 +201,52 @@ impl CanvasTile for WorldUpdate {
                     }
                 }
             }
+        }
+    }
+}
+
+pub struct WorldUpdateDraw {
+    update: WorldUpdate,
+    current_frame: u8,
+    total_frame: u8,
+}
+
+impl WorldUpdateDraw {
+    fn draw_into<E: DrawGrid>(&mut self, env: &mut E) {
+        let t = UnitInterval::from_u8_and_range(self.current_frame, 0..self.total_frame);
+
+        match self.update {
+            WorldUpdate::Clear { prev_block, at } => {
+                env.with_defaults(|mut handle| match Tile::from(prev_block) {
+                    Tile::Snake => handle.clear_tile(
+                        at.x as u32,
+                        at.y as u32,
+                        prev_block.into_direction_unchecked(),
+                        t,
+                    ),
+                    _ => handle.clear_tile(
+                        at.x as u32,
+                        at.y as u32,
+                        Direction::East,
+                        UnitInterval::max_value(),
+                    ),
+                });
+            }
+            WorldUpdate::SetBlock { block, at } => match Tile::from(block) {
+                Tile::Food => env.with_fill_color(Color::Red, |mut handle| {
+                    handle.circle(at.x as u32, at.y as u32, t);
+                }),
+                Tile::Snake => env.with_defaults(|mut handle| {
+                    handle.fill_tile(
+                        at.x as u32,
+                        at.y as u32,
+                        block.into_direction_unchecked(),
+                        t,
+                    );
+                }),
+                _ => {}
+            },
+            _ => {}
         }
     }
 }
