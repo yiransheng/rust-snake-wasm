@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_converion_safety() {
-        for x in 0..u8::max_value() {
+        for x in 0..=u8::max_value() {
             // make sure every u8 bit pattern result in a valid Direction
             // ...that is, not getting SIGIL or something
             unsafe {
