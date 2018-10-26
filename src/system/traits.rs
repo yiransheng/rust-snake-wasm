@@ -255,12 +255,22 @@ impl<T> CmdDoubleBuffer<T> {
     }
     fn swap_if<F>(&mut self, f: F)
     where
-        F: Fn(&CmdBuffer<T>) -> bool,
+        F: Fn(&CmdBuffer<T>, &CmdBuffer<T>) -> bool,
     {
         let should_swap;
         {
-            let next = &*self.next();
-            should_swap = f(next);
+            let curr;
+            let next;
+
+            if self.swapped {
+                curr = &self.first;
+                next = &self.second;
+            } else {
+                curr = &self.second;
+                next = &self.first;
+            }
+
+            should_swap = f(curr, next);
         }
         if should_swap {
             self.swapped = !self.swapped;
@@ -326,8 +336,13 @@ where
 
                 // console_log!("Current: {:?}", buf.borrow_mut().current());
                 // console_log!("Next   : {:?}", buf.borrow_mut().next());
-                buf.borrow_mut()
-                    .swap_if(|b| b.iter().any(|&t| t.into().is_some()));
+                buf.borrow_mut().swap_if(|curr, next| {
+                    let a = curr.iter().filter(|t| (**t).into().is_some()).count();
+                    let b = next.iter().filter(|t| (**t).into().is_some()).count();
+
+                    a < b
+                });
+                // .swap_if(|c, n| n.iter().any(|&t| t.into().is_some()));
             }
 
             buf.borrow_mut().clear_both();
