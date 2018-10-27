@@ -72,8 +72,6 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>> {
         if let Some(dir) = cmd {
             self.set_direction(dir);
-            // } else {
-            // return Ok(None);
         }
 
         match self.state {
@@ -97,16 +95,13 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
 }
 
 impl<R: Rng> World<R> {
-    fn set_direction(&mut self, dir: Direction) -> bool {
+    fn set_direction(&mut self, dir: Direction) {
         let head = self.head;
         let head_dir: Direction =
             self.get_block(head).into_direction_unchecked();
 
-        if dir != head_dir.opposite() && dir != head_dir {
+        if dir != head_dir.opposite() {
             self.set_block(head, dir);
-            true
-        } else {
-            false
         }
     }
 
@@ -147,7 +142,7 @@ impl<R: Rng> World<R> {
                 Ok(next_head_block)
             }
             Tile::Snake(_) => Err(UpdateError::CollideBody),
-            _ => unreachable!(),
+            Tile::OutOfBound => unreachable!("No bounds in wrapping behavior, a bug")
             // Tile::OutOfBound => Err(UpdateError::OutOfBound),
         }
     }

@@ -279,24 +279,33 @@ where
 
         (buf.clone(), move || loop {
             {
+                this.env.clear();
                 let iter = this.model.initialize();
                 for update in iter {
-                    let renderer = R::new_patch(update, &mut this.env);
-                    yield_from!(renderer.to_generator());
+                    let renderer = R::new_patch(update);
+                    yield_from!(renderer.to_generator(&mut this.env));
                 }
             }
 
             loop {
-                // console_log!("Tick Start Current: {:?}", buf.borrow_mut().current());
-                // console_log!("Tick Start Next   : {:?}", buf.borrow_mut().next());
+                /*
+                 * console_log!(
+                 *     "Tick Start Current: {:?}",
+                 *     buf.borrow_mut().current()
+                 * );
+                 * console_log!(
+                 *     "Tick Start Next   : {:?}",
+                 *     buf.borrow_mut().next()
+                 * );
+                 */
 
                 let cmd = buf.borrow_mut().read().and_then(|c| c.into());
                 let update = this.model.step(cmd);
 
                 match update {
                     Ok(Some(u)) => {
-                        let renderer = R::new_patch(u, &mut this.env);
-                        yield_from!(renderer.to_generator());
+                        let renderer = R::new_patch(u);
+                        yield_from!(renderer.to_generator(&mut this.env));
                     }
                     Ok(None) => yield (),
                     Err(_) => break,
@@ -304,6 +313,8 @@ where
 
                 // console_log!("Current: {:?}", buf.borrow_mut().current());
                 // console_log!("Next   : {:?}", buf.borrow_mut().next());
+                // buf.borrow_mut()
+                // .swap_if(|_c, n| n.iter().any(|&t| t.into().is_some()));
                 buf.borrow_mut().swap_if(|curr, next| {
                     let a =
                         curr.iter().filter(|t| (**t).into().is_some()).count();
@@ -312,7 +323,6 @@ where
 
                     a < b
                 });
-                // .swap_if(|c, n| n.iter().any(|&t| t.into().is_some()));
             }
 
             buf.borrow_mut().clear_both();

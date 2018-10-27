@@ -1,11 +1,12 @@
 use std::f64::consts::PI;
+use std::marker::PhantomData;
 
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
 use data::{Direction, Tile};
-use system::{Color, DrawGrid, UnitInterval};
+use system::{Color, DrawGrid, IncrRender, UnitInterval};
 use world::WorldUpdate;
 
 pub struct CanvasEnv {
@@ -43,69 +44,69 @@ impl CanvasEnv {
     }
 }
 
-// impl DrawGrid for CanvasEnv {
-// fn setup(&mut self, tile_size: u32, width: u32, height: u32) {
-// self.tile_size = tile_size as f64;
-// self.canvas.set_width(width * tile_size);
-// self.canvas.set_height(height * tile_size);
-// }
+impl DrawGrid for CanvasEnv {
+    fn setup(&mut self, tile_size: u32, width: u32, height: u32) {
+        self.tile_size = tile_size as f64;
+        self.canvas.set_width(width * tile_size);
+        self.canvas.set_height(height * tile_size);
+    }
 
-// fn clear(&mut self) {
-// self.gc.clear_rect(
-// 0.0,
-// 0.0,
-// self.canvas.width() as f64,
-// self.canvas.height() as f64,
-// );
-// }
+    fn clear(&mut self) {
+        self.gc.clear_rect(
+            0.0,
+            0.0,
+            self.canvas.width() as f64,
+            self.canvas.height() as f64,
+        );
+    }
 
-// // returns current fill color
-// fn set_fill_color(&mut self, color: Color) -> Color {
-// color
-// }
+    // returns current fill color
+    fn set_fill_color(&mut self, color: Color) -> Color {
+        color
+    }
 
-// #[inline(always)]
-// fn fill_tile(
-// &mut self,
-// x: u32,
-// y: u32,
-// dir: Direction,
-// size: UnitInterval,
-// ) {
-// let (x, y, w, h) = self.partial_tile(x, y, dir, size);
+    #[inline(always)]
+    fn fill_tile(
+        &mut self,
+        x: u32,
+        y: u32,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
+        let (x, y, w, h) = self.partial_tile(x, y, dir, size);
 
-// self.gc.fill_rect(x, y, w, h);
-// }
+        self.gc.fill_rect(x, y, w, h);
+    }
 
-// #[inline(always)]
-// fn clear_tile(
-// &mut self,
-// x: u32,
-// y: u32,
-// dir: Direction,
-// size: UnitInterval,
-// ) {
-// let (x, y, w, h) = self.partial_tile(x, y, dir, size);
+    #[inline(always)]
+    fn clear_tile(
+        &mut self,
+        x: u32,
+        y: u32,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
+        let (x, y, w, h) = self.partial_tile(x, y, dir, size);
 
-// self.gc.clear_rect(x, y, w, h);
-// }
+        self.gc.clear_rect(x, y, w, h);
+    }
 
-// fn circle(&mut self, x: u32, y: u32, radius: UnitInterval) {
-// let x = f64::from(x) * self.tile_size;
-// let y = f64::from(y) * self.tile_size;
+    fn circle(&mut self, x: u32, y: u32, radius: UnitInterval) {
+        let x = f64::from(x) * self.tile_size;
+        let y = f64::from(y) * self.tile_size;
 
-// let r_full = self.tile_size / 2.0;
-// let r = radius.scale(r_full);
-// // gc.save();
+        let r_full = self.tile_size / 2.0;
+        let r = radius.scale(r_full);
+        // gc.save();
 
-// // gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
-// self.gc.begin_path();
-// let _ = self.gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
-// self.gc.fill();
+        // gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
+        self.gc.begin_path();
+        let _ = self.gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
+        self.gc.fill();
 
-// // gc.restore();
-// }
-// }
+        // gc.restore();
+    }
+}
 
 impl CanvasEnv {
     fn partial_tile(
@@ -156,39 +157,76 @@ impl CanvasEnv {
     }
 }
 
-// pub struct WorldUpdateDraw {
-// update: WorldUpdate,
-// current_frame: u8,
-// total_frame: u8,
-// }
+pub struct WorldUpdateDraw<U: Into<WorldUpdate> = WorldUpdate> {
+    update: WorldUpdate,
+    current_frame: u8,
+    total_frame: u8,
+    _update_type: PhantomData<U>,
+}
 
-// impl WorldUpdateDraw {
-// fn draw_into<E: DrawGrid>(&mut self, mut env: DrawHandle<E>) {
-// let t = UnitInterval::from_u8_and_range(
-// self.current_frame,
-// 0..self.total_frame,
-// );
+impl IncrRender for WorldUpdateDraw<WorldUpdate> {
+    type Env = CanvasEnv;
+    type Patch = WorldUpdate;
 
-// match self.update {
-// WorldUpdate::Clear { prev_block, at } => {
-// match Tile::from(prev_block) {
-// Tile::Snake(dir) => env.clear_tile(at.x, at.y, dir, t),
-// _ => env.clear_tile(
-// at.x,
-// at.y,
-// Direction::East,
-// UnitInterval::max_value(),
-// ),
-// }
-// }
-// WorldUpdate::SetBlock { block, at } => match Tile::from(block) {
-// Tile::Food => env.with_fill_color(Color::Red, |mut env| {
-// env.circle(at.x, at.y, t);
-// }),
-// Tile::Snake(dir) => env.fill_tile(at.x, at.y, dir, t),
-// _ => {}
-// },
-// _ => {}
-// }
-// }
-// }
+    fn new_patch(u: WorldUpdate) -> Self {
+        WorldUpdateDraw {
+            update: u,
+            current_frame: 0,
+            total_frame: ANIMATION_FRAME_COUNT,
+            _update_type: PhantomData,
+        }
+    }
+
+    fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+        let next_frame = self.draw_frame(env);
+
+        if next_frame >= self.total_frame {
+            self.current_frame = self.total_frame;
+            None
+        } else {
+            self.current_frame = next_frame;
+            Some(())
+        }
+    }
+}
+
+impl<U> WorldUpdateDraw<U>
+where
+    U: Into<WorldUpdate>,
+{
+    fn draw_frame<E: DrawGrid>(&self, env: &mut E) -> u8 {
+        let t = UnitInterval::from_u8_and_range(
+            self.current_frame,
+            0..self.total_frame,
+        );
+
+        match self.update {
+            WorldUpdate::SetWorldSize(w, h) => {
+                env.setup(10, w, h);
+                self.total_frame
+            }
+            WorldUpdate::Clear { prev_block, at } => {
+                match Tile::from(prev_block) {
+                    Tile::Snake(dir) => env.clear_tile(at.x, at.y, dir, t),
+                    _ => env.clear_tile(
+                        at.x,
+                        at.y,
+                        Direction::East,
+                        UnitInterval::max_value(),
+                    ),
+                }
+                self.current_frame + 1
+            }
+            WorldUpdate::SetBlock { block, at } => {
+                match Tile::from(block) {
+                    Tile::Food => env.with_fill_color(Color::Red, |env| {
+                        env.circle(at.x, at.y, t);
+                    }),
+                    Tile::Snake(dir) => env.fill_tile(at.x, at.y, dir, t),
+                    _ => {}
+                }
+                self.current_frame + 1
+            }
+        }
+    }
+}

@@ -72,30 +72,45 @@ pub trait DrawGrid {
         dir: Direction,
         size: UnitInterval,
     );
-}
 
-pub trait IncrRender: Iterator<Item = ()> {
-    type Env: DrawGrid;
-    type Patch;
-
-    fn new_patch(u: Self::Patch, env: &mut Self::Env) -> Self;
-
-    fn to_generator(self) -> IncrRenderGen<Self>
+    fn with_fill_color<F>(&mut self, color: Color, mut f: F)
     where
         Self: Sized,
+        F: FnMut(&mut Self),
     {
-        IncrRenderGen::Created(self)
+        let prev_color = self.set_fill_color(color);
+
+        f(self);
+
+        self.set_fill_color(prev_color);
     }
 }
 
-pub enum IncrRenderGen<R> {
-    Created(R),
-    InProgress(R),
+pub trait IncrRender {
+    type Env: DrawGrid;
+    type Patch;
+
+    fn new_patch(u: Self::Patch) -> Self;
+
+    fn render(&mut self, env: &mut Self::Env) -> Option<()>;
+
+    fn to_generator(self, env: &mut Self::Env) -> IncrRenderGen<Self, Self::Env>
+    where
+        Self: Sized,
+    {
+        IncrRenderGen::Created(self, env)
+    }
+}
+
+pub enum IncrRenderGen<'a, R, E> {
+    Created(R, &'a mut E),
+    InProgress(R, &'a mut E),
     Done,
 }
-impl<R> Generator for IncrRenderGen<R>
+impl<'a, R, E> Generator for IncrRenderGen<'a, R, E>
 where
-    R: IncrRender,
+    R: IncrRender<Env = E>,
+    E: DrawGrid,
 {
     type Yield = ();
     type Return = ();
@@ -105,27 +120,37 @@ where
 
         match this {
             // yield once
-            IncrRenderGen::Created(mut renderer) => match renderer.next() {
-                Some(_) => {
-                    ::std::mem::replace(
-                        self,
-                        IncrRenderGen::InProgress(renderer),
-                    );
-                    GeneratorState::Yielded(())
+            IncrRenderGen::Created(mut renderer, env) => {
+                match renderer.render(env) {
+                    Some(_) => {
+                        ::std::mem::replace(
+                            self,
+                            IncrRenderGen::InProgress(renderer, env),
+                        );
+                        GeneratorState::Yielded(())
+                    }
+                    _ => {
+                        ::std::mem::replace(self, IncrRenderGen::Done);
+                        GeneratorState::Yielded(())
+                    }
                 }
-                _ => {
-                    ::std::mem::replace(self, IncrRenderGen::Done);
-                    GeneratorState::Yielded(())
-                }
-            },
+            }
             // yield zero or more times
-            IncrRenderGen::InProgress(mut renderer) => match renderer.next() {
-                Some(_) => GeneratorState::Yielded(()),
-                _ => {
-                    ::std::mem::replace(self, IncrRenderGen::Done);
-                    GeneratorState::Complete(())
+            IncrRenderGen::InProgress(mut renderer, env) => {
+                match renderer.render(env) {
+                    Some(_) => {
+                        ::std::mem::replace(
+                            self,
+                            IncrRenderGen::InProgress(renderer, env),
+                        );
+                        GeneratorState::Yielded(())
+                    }
+                    _ => {
+                        ::std::mem::replace(self, IncrRenderGen::Done);
+                        GeneratorState::Complete(())
+                    }
                 }
-            },
+            }
             // return
             IncrRenderGen::Done => GeneratorState::Complete(()),
         }

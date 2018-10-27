@@ -73,7 +73,7 @@ impl Grid {
 
         let Coordinate { x, y } = coord;
 
-        if x >= width || x >= height {
+        if x >= width || y >= height {
             None
         } else {
             Some((y * width + x) as usize)
