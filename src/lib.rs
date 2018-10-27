@@ -35,8 +35,8 @@ mod system;
 mod world;
 
 use data::{Direction, Key};
-use renderers::{BlockRenderer, CanvasEnv};
-use system::{Game, Model, Render};
+use renderers::CanvasEnv;
+use system::{Game, Model};
 use world::{World, WorldBuilder, WorldUpdate};
 
 #[wasm_bindgen(module = "./game-loop")]
@@ -84,23 +84,25 @@ pub fn main() {
         .extend(Direction::East)
         .build_with_seed::<SmallRng>([123; 16]);
 
-    let game = world.make_game(CanvasEnv::new());
-
-    let (cmd_buffer, mut generator) = game.create::<BlockRenderer<_>, Key>();
-
-    let each_tick = Closure::wrap(Box::new(move |key: u8| {
-        let key = Key::from(key);
-
-        cmd_buffer.borrow_mut().write(key);
-
-        unsafe {
-            generator.resume();
-        }
-    }) as Box<FnMut(_)>);
-
-    let game_loop = GameLoop::new(&each_tick);
-
-    game_loop.start();
-
-    each_tick.forget();
+    /*
+     *     let game = world.make_game(CanvasEnv::new());
+     *
+     *     let (cmd_buffer, mut generator) = game.create::<BlockRenderer<_>, Key>();
+     *
+     *     let each_tick = Closure::wrap(Box::new(move |key: u8| {
+     *         let key = Key::from(key);
+     *
+     *         cmd_buffer.borrow_mut().write(key);
+     *
+     *         unsafe {
+     *             generator.resume();
+     *         }
+     *     }) as Box<FnMut(_)>);
+     *
+     *     let game_loop = GameLoop::new(&each_tick);
+     *
+     *     game_loop.start();
+     *
+     *     each_tick.forget();
+     */
 }

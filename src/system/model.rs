@@ -13,6 +13,7 @@ use std::ops::{Generator, GeneratorState};
 use arraydeque::{ArrayDeque, Wrapping};
 use void::Void;
 
+use super::render::{DrawGrid, IncrRender};
 use constants::ANIMATION_FRAME_COUNT;
 
 pub struct GameOver;
@@ -61,38 +62,6 @@ pub trait Model<'m> {
             f,
         }
     }
-}
-
-pub trait Render {
-    type Env;
-    type Update;
-
-    fn create(u: Self::Update, env: &mut Self::Env) -> Self;
-
-    fn render(&mut self, env: &mut Self::Env) -> Option<()>;
-
-    #[inline]
-    fn render_into(self, env: &mut Self::Env) -> RenderGen<Self::Env, Self>
-    where
-        Self: Sized,
-    {
-        RenderGen {
-            env,
-            renderer: self,
-            ever_yielded: false,
-        }
-    }
-}
-
-pub trait CanvasTile {
-    // normalized_progress 0 to 1 inclusive
-    fn draw_tile(
-        &self,
-        gc: &CanvasRenderingContext2d,
-        normalized_progress: f64,
-    );
-
-    fn setup_canvas(&self, canvas: &HtmlCanvasElement);
 }
 
 pub struct ZipWith<L, R, F> {
@@ -202,50 +171,18 @@ where
  * }
  *
  */
-pub struct RenderGen<'a, E, R> {
-    env: &'a mut E,
-    renderer: R,
-    // renderer can complete immediately without ever return Some(())
-    // force this generator to yield at least once
-    ever_yielded: bool,
-}
-impl<'a, E, R> Generator for RenderGen<'a, E, R>
-where
-    R: Render<Env = E>,
-{
-    type Yield = ();
-    type Return = ();
+type InputBuffer<T> = ArrayDeque<[T; ANIMATION_FRAME_COUNT as usize], Wrapping>;
 
-    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
-        match self.renderer.render(self.env) {
-            Some(_) => {
-                self.ever_yielded = true;
-                GeneratorState::Yielded(())
-            }
-            _ => {
-                if self.ever_yielded {
-                    GeneratorState::Complete(())
-                } else {
-                    self.ever_yielded = true;
-                    GeneratorState::Yielded(())
-                }
-            }
-        }
-    }
-}
-
-type CmdBuffer<T> = ArrayDeque<[T; ANIMATION_FRAME_COUNT as usize], Wrapping>;
-
-pub struct CmdDoubleBuffer<T> {
+pub struct InputDblBuffer<T> {
     swapped: bool,
 
-    first: CmdBuffer<T>,
-    second: CmdBuffer<T>,
+    first: InputBuffer<T>,
+    second: InputBuffer<T>,
 }
 
-impl<T> CmdDoubleBuffer<T> {
+impl<T> InputDblBuffer<T> {
     fn new() -> Self {
-        CmdDoubleBuffer {
+        InputDblBuffer {
             swapped: false,
             first: ArrayDeque::new(),
             second: ArrayDeque::new(),
@@ -269,14 +206,14 @@ impl<T> CmdDoubleBuffer<T> {
         Some(())
     }
 
-    fn current(&mut self) -> &mut CmdBuffer<T> {
+    fn current(&mut self) -> &mut InputBuffer<T> {
         if self.swapped {
             &mut self.first
         } else {
             &mut self.second
         }
     }
-    fn next(&mut self) -> &mut CmdBuffer<T> {
+    fn next(&mut self) -> &mut InputBuffer<T> {
         if self.swapped {
             &mut self.second
         } else {
@@ -285,7 +222,7 @@ impl<T> CmdDoubleBuffer<T> {
     }
     fn swap_if<F>(&mut self, f: F)
     where
-        F: Fn(&CmdBuffer<T>, &CmdBuffer<T>) -> bool,
+        F: Fn(&InputBuffer<T>, &InputBuffer<T>) -> bool,
     {
         let should_swap;
         {
@@ -326,25 +263,26 @@ where
     E: 'static,
 {
     #[allow(dead_code)]
-    pub fn create<R, T>(
+    pub fn create<R, Input>(
         self: Box<Self>,
     ) -> (
-        Rc<RefCell<CmdDoubleBuffer<T>>>,
+        Rc<RefCell<InputDblBuffer<Input>>>,
         impl Generator<Yield = (), Return = ()>,
     )
     where
-        R: Render<Env = E, Update = U>,
-        T: Into<Option<Cmd>> + Copy + 'static + Eq + ::std::fmt::Debug,
+        E: DrawGrid,
+        R: IncrRender<Env = E, Patch = U>,
+        Input: Into<Option<Cmd>> + Copy + 'static + Eq + ::std::fmt::Debug,
     {
         let this = Box::leak(self);
-        let buf = Rc::new(RefCell::new(CmdDoubleBuffer::new()));
+        let buf = Rc::new(RefCell::new(InputDblBuffer::new()));
 
         (buf.clone(), move || loop {
             {
                 let iter = this.model.initialize();
-                for u in iter {
-                    let renderer = R::create(u, &mut this.env);
-                    yield_from!(renderer.render_into(&mut this.env));
+                for update in iter {
+                    let renderer = R::new_patch(update, &mut this.env);
+                    yield_from!(renderer.to_generator());
                 }
             }
 
@@ -357,8 +295,8 @@ where
 
                 match update {
                     Ok(Some(u)) => {
-                        let renderer = R::create(u, &mut this.env);
-                        yield_from!(renderer.render_into(&mut this.env));
+                        let renderer = R::new_patch(u, &mut this.env);
+                        yield_from!(renderer.to_generator());
                     }
                     Ok(None) => yield (),
                     Err(_) => break,

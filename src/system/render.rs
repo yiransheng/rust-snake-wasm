@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
-use std::ops::Range;
+use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Generator, GeneratorState};
 
 use data::Direction;
 
@@ -46,20 +47,6 @@ impl Default for UnitInterval {
     }
 }
 
-pub struct OutOfRange(f64);
-
-impl TryFrom<f64> for UnitInterval {
-    type Error = OutOfRange;
-
-    fn try_from(v: f64) -> Result<Self, Self::Error> {
-        if v.is_nan() || v < 0.0 || v > 1.0 {
-            return Err(OutOfRange(v));
-        }
-
-        Ok(UnitInterval(v))
-    }
-}
-
 #[derive(Copy, Clone)]
 pub enum Color {
     Red,
@@ -85,90 +72,62 @@ pub trait DrawGrid {
         dir: Direction,
         size: UnitInterval,
     );
+}
 
-    fn with_defaults<F>(&mut self, mut f: F)
+pub trait IncrRender: Iterator<Item = ()> {
+    type Env: DrawGrid;
+    type Patch;
+
+    fn new_patch(u: Self::Patch, env: &mut Self::Env) -> Self;
+
+    fn to_generator(self) -> IncrRenderGen<Self>
     where
         Self: Sized,
-        F: FnMut(DrawHandle<Self>),
     {
-        let handle = DrawHandle {
-            grid: self,
-            prev_color: None,
-        };
-
-        f(handle);
-    }
-
-    fn with_fill_color<C, F>(&mut self, color: C, mut f: F)
-    where
-        Self: Sized,
-        C: Into<Color>,
-        F: for<'a> FnMut(DrawHandle<'a, Self>),
-    {
-        let prev_color = self.set_fill_color(color.into());
-
-        let handle = DrawHandle {
-            grid: self,
-            prev_color: Some(prev_color),
-        };
-
-        f(handle);
+        IncrRenderGen::Created(self)
     }
 }
 
-pub struct DrawHandle<'a, G: DrawGrid> {
-    grid: &'a mut G,
-    prev_color: Option<Color>,
+pub enum IncrRenderGen<R> {
+    Created(R),
+    InProgress(R),
+    Done,
 }
-
-impl<'a, G> DrawHandle<'a, G>
+impl<R> Generator for IncrRenderGen<R>
 where
-    G: DrawGrid,
+    R: IncrRender,
 {
-    #[inline]
-    pub fn circle<U: Into<u32>>(&mut self, x: U, y: U, radius: UnitInterval) {
-        self.grid.circle(x.into(), y.into(), radius);
-    }
+    type Yield = ();
+    type Return = ();
 
-    #[inline]
-    pub fn fill_tile<U: Into<u32>>(
-        &mut self,
-        x: U,
-        y: U,
-        dir: Direction,
-        size: UnitInterval,
-    ) {
-        self.grid.fill_tile(x.into(), y.into(), dir, size);
-    }
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+        let this = ::std::mem::replace(self, IncrRenderGen::Done);
 
-    #[inline]
-    pub fn clear_tile<U: Into<u32>>(
-        &mut self,
-        x: U,
-        y: U,
-        dir: Direction,
-        size: UnitInterval,
-    ) {
-        self.grid.clear_tile(x.into(), y.into(), dir, size);
-    }
-
-    #[inline]
-    pub fn with_fill_color<C, F>(&mut self, color: C, mut f: F)
-    where
-        C: Into<Color>,
-        F: for<'b> FnMut(DrawHandle<'b, G>),
-    {
-        self.grid.with_fill_color(color, f);
-    }
-}
-
-impl<'a, G: DrawGrid> Drop for DrawHandle<'a, G> {
-    fn drop(&mut self) {
-        match self.prev_color.take() {
-            Some(color) => {
-                self.grid.set_fill_color(color);
-            }
-            _ => {}
+        match this {
+            // yield once
+            IncrRenderGen::Created(mut renderer) => match renderer.next() {
+                Some(_) => {
+                    ::std::mem::replace(
+                        self,
+                        IncrRenderGen::InProgress(renderer),
+                    );
+                    GeneratorState::Yielded(())
+                }
+                _ => {
+                    ::std::mem::replace(self, IncrRenderGen::Done);
+                    GeneratorState::Yielded(())
+                }
+            },
+            // yield zero or more times
+            IncrRenderGen::InProgress(mut renderer) => match renderer.next() {
+                Some(_) => GeneratorState::Yielded(()),
+                _ => {
+                    ::std::mem::replace(self, IncrRenderGen::Done);
+                    GeneratorState::Complete(())
+                }
+            },
+            // return
+            IncrRenderGen::Done => GeneratorState::Complete(()),
         }
     }
 }

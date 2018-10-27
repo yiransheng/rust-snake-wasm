@@ -14,6 +14,7 @@ wasm-bindgen = "0.2.25"
 rand = "0.5.5"
 either = "1.5.0"
 arraydeque = "0.4.3"
+derive_deref = "1.0"
 smallvec = "0.6.5"
 
 [dependencies.web-sys]
