@@ -76,6 +76,7 @@ pub trait Render {
         RenderGen {
             env,
             renderer: self,
+            ever_yielded: false,
         }
     }
 }
@@ -189,6 +190,9 @@ where
 pub struct RenderGen<'a, E, R> {
     env: &'a mut E,
     renderer: R,
+    // renderer can complete immediately without ever return Some(())
+    // force this generator to yield at least once
+    ever_yielded: bool,
 }
 impl<'a, E, R> Generator for RenderGen<'a, E, R>
 where
@@ -199,8 +203,18 @@ where
 
     unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         match self.renderer.render(self.env) {
-            Some(_) => GeneratorState::Yielded(()),
-            _ => GeneratorState::Complete(()),
+            Some(_) => {
+                self.ever_yielded = true;
+                GeneratorState::Yielded(())
+            }
+            _ => {
+                if self.ever_yielded {
+                    GeneratorState::Complete(())
+                } else {
+                    self.ever_yielded = true;
+                    GeneratorState::Yielded(())
+                }
+            }
         }
     }
 }
