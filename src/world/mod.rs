@@ -228,7 +228,7 @@ impl<'a> Iterator for SnakeIter<'a> {
         match block.into() {
             Some(dir) => {
                 let current = self.at;
-                let next = current.move_towards(dir);
+                let next = current.move_towards(dir).unwrap_unchecked();
 
                 self.at = next;
 

@@ -30,8 +30,10 @@ impl WorldBuilder {
         self
     }
     pub fn set_snake(self, x: u32, y: u32) -> SnakeBuilder {
+        assert!(x < self.width && y < self.height);
+
         let grid = Grid::empty(self.width, self.height);
-        let tail = Coordinate::new(x, y);
+        let tail = Coordinate::new_unchecked(x, y);
 
         SnakeBuilder {
             grid,
@@ -69,7 +71,11 @@ impl SnakeBuilder {
             self.tail = next_head;
         }
         self.head = next_head;
-        self.next_head = next_head.move_towards(dir);
+
+        self.next_head = next_head
+            .move_towards(dir)
+            .into_coordinate(self.grid.width(), self.grid.height())
+            .unwrap();
 
         self
     }

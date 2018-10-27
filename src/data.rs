@@ -112,17 +112,8 @@ pub struct Coordinate {
 }
 
 impl Coordinate {
-    pub fn new(x: u32, y: u32) -> Self {
+    pub fn new_unchecked(x: u32, y: u32) -> Self {
         Coordinate { x, y }
-    }
-    pub fn into_unchecked(self) -> UncheckedCoordinate {
-        UncheckedCoordinate { inner: self }
-    }
-    pub fn from_usize(x: usize, y: usize) -> Self {
-        Coordinate {
-            x: x as u32,
-            y: y as u32,
-        }
     }
     pub fn move_towards(self, dir: Direction) -> UncheckedCoordinate {
         let Coordinate { x, y } = self;
@@ -144,6 +135,11 @@ impl UncheckedCoordinate {
         UncheckedCoordinate {
             inner: Coordinate { x, y },
         }
+    }
+
+    #[inline(always)]
+    pub fn unwrap_unchecked(self) -> Coordinate {
+        self.inner
     }
 
     pub fn into_coordinate(self, bound_width: u32, bound_height: u32) -> Option<Coordinate> {

@@ -86,7 +86,10 @@ impl Grid {
         let dir: Direction = b.into_direction()?;
         let dir = dir.opposite();
 
-        let prev_coord = coord.move_towards(dir);
+        let prev_coord = coord
+            .move_towards(dir)
+            .into_coordinate(self.width, self.height)?;
+
         let prev_block = self.get_block(prev_coord);
 
         if prev_block.is_snake() {
@@ -101,7 +104,10 @@ impl Grid {
 
         let dir = b.into_direction()?;
 
-        let next_coord = coord.move_towards(dir);
+        let next_coord = coord
+            .move_towards(dir)
+            .into_coordinate(self.width, self.height)?;
+
         let next_block = self.get_block(next_coord);
 
         if next_block.is_snake() {
