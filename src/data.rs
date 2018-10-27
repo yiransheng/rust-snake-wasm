@@ -115,6 +115,9 @@ impl Coordinate {
     pub fn new(x: u32, y: u32) -> Self {
         Coordinate { x, y }
     }
+    pub fn into_unchecked(self) -> UncheckedCoordinate {
+        UncheckedCoordinate { inner: self }
+    }
     pub fn from_usize(x: usize, y: usize) -> Self {
         Coordinate {
             x: x as u32,
