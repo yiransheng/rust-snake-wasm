@@ -1,5 +1,5 @@
+mod model;
 mod render;
-mod traits;
 
+pub use self::model::*;
 pub use self::render::*;
-pub use self::traits::*;

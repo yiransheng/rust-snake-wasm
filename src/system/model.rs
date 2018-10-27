@@ -31,7 +31,10 @@ pub trait Model<'m> {
 
     fn initialize(&'m mut self) -> Self::State;
 
-    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>, Self::Error>;
+    fn step(
+        &mut self,
+        cmd: Option<Self::Cmd>,
+    ) -> Result<Option<Self::Update>, Self::Error>;
 
     fn tear_down(&mut self);
 
@@ -83,7 +86,11 @@ pub trait Render {
 
 pub trait CanvasTile {
     // normalized_progress 0 to 1 inclusive
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, normalized_progress: f64);
+    fn draw_tile(
+        &self,
+        gc: &CanvasRenderingContext2d,
+        normalized_progress: f64,
+    );
 
     fn setup_canvas(&self, canvas: &HtmlCanvasElement);
 }
@@ -103,8 +110,13 @@ where
 {
     type Cmd = L::Cmd;
     type Update = T;
-    type State =
-        Map<Zip<<L::State as IntoIterator>::IntoIter, <R::State as IntoIterator>::IntoIter>, &'m F>;
+    type State = Map<
+        Zip<
+            <L::State as IntoIterator>::IntoIter,
+            <R::State as IntoIterator>::IntoIter,
+        >,
+        &'m F,
+    >;
     type Error = L::Error;
 
     fn initialize(&'m mut self) -> Self::State {
@@ -115,7 +127,10 @@ where
             .map(&self.f)
     }
 
-    fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>, Self::Error> {
+    fn step(
+        &mut self,
+        cmd: Option<Self::Cmd>,
+    ) -> Result<Option<Self::Update>, Self::Error> {
         let ul = self.left.step(cmd)?;
         let ur = self.right.step(cmd).unwrap();
 
@@ -352,8 +367,10 @@ where
                 // console_log!("Current: {:?}", buf.borrow_mut().current());
                 // console_log!("Next   : {:?}", buf.borrow_mut().next());
                 buf.borrow_mut().swap_if(|curr, next| {
-                    let a = curr.iter().filter(|t| (**t).into().is_some()).count();
-                    let b = next.iter().filter(|t| (**t).into().is_some()).count();
+                    let a =
+                        curr.iter().filter(|t| (**t).into().is_some()).count();
+                    let b =
+                        next.iter().filter(|t| (**t).into().is_some()).count();
 
                     a < b
                 });

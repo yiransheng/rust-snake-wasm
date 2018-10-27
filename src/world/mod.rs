@@ -99,7 +99,8 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
 impl<R: Rng> World<R> {
     fn set_direction(&mut self, dir: Direction) -> bool {
         let head = self.head;
-        let head_dir: Direction = self.get_block(head).into_direction_unchecked();
+        let head_dir: Direction =
+            self.get_block(head).into_direction_unchecked();
 
         if dir != head_dir.opposite() && dir != head_dir {
             self.set_block(head, dir);
@@ -112,7 +113,8 @@ impl<R: Rng> World<R> {
     fn reset(&mut self) {
         self.grid.clear();
 
-        let initial_snake = ::std::mem::replace(&mut self.initial_snake, vec![]);
+        let initial_snake =
+            ::std::mem::replace(&mut self.initial_snake, vec![]);
         let n = initial_snake.len();
 
         for (i, (at, dir)) in initial_snake.iter().enumerate() {
@@ -156,7 +158,10 @@ impl<R: Rng> World<R> {
                 let tail_block = self.get_block(tail);
                 let next_tail = tail
                     .move_towards(tail_block.into_direction_unchecked())
-                    .into_coordinate_wrapping(self.grid.width(), self.grid.height());
+                    .into_coordinate_wrapping(
+                        self.grid.width(),
+                        self.grid.height(),
+                    );
 
                 self.tail = next_tail;
 

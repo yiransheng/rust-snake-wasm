@@ -142,7 +142,11 @@ impl UncheckedCoordinate {
         self.inner
     }
 
-    pub fn into_coordinate(self, bound_width: u32, bound_height: u32) -> Option<Coordinate> {
+    pub fn into_coordinate(
+        self,
+        bound_width: u32,
+        bound_height: u32,
+    ) -> Option<Coordinate> {
         if self.inner.x < bound_width && self.inner.y < bound_height {
             Some(self.inner)
         } else {
@@ -150,7 +154,11 @@ impl UncheckedCoordinate {
         }
     }
 
-    pub fn into_coordinate_wrapping(self, bound_width: u32, bound_height: u32) -> Coordinate {
+    pub fn into_coordinate_wrapping(
+        self,
+        bound_width: u32,
+        bound_height: u32,
+    ) -> Coordinate {
         let Coordinate { x, y } = self.inner;
 
         Coordinate {

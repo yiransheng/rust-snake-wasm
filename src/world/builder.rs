@@ -79,7 +79,10 @@ impl SnakeBuilder {
 
         self
     }
-    pub fn build_with_seed<R: Rng + SeedableRng>(self, seed: R::Seed) -> World<R> {
+    pub fn build_with_seed<R: Rng + SeedableRng>(
+        self,
+        seed: R::Seed,
+    ) -> World<R> {
         assert!(self.snake_len > 1);
 
         let rng = R::from_seed(seed);

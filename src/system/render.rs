@@ -78,7 +78,13 @@ pub trait DrawGrid {
 
     fn fill_tile(&mut self, x: u32, y: u32, dir: Direction, size: UnitInterval);
 
-    fn clear_tile(&mut self, x: u32, y: u32, dir: Direction, size: UnitInterval);
+    fn clear_tile(
+        &mut self,
+        x: u32,
+        y: u32,
+        dir: Direction,
+        size: UnitInterval,
+    );
 
     fn with_defaults<F>(&mut self, mut f: F)
     where
@@ -97,7 +103,7 @@ pub trait DrawGrid {
     where
         Self: Sized,
         C: Into<Color>,
-        F: Fn(DrawHandle<Self>),
+        F: FnMut(DrawHandle<Self>),
     {
         let prev_color = self.set_fill_color(color.into());
 
@@ -125,13 +131,35 @@ where
     }
 
     #[inline]
-    pub fn fill_tile<U: Into<u32>>(&mut self, x: U, y: U, dir: Direction, size: UnitInterval) {
+    pub fn fill_tile<U: Into<u32>>(
+        &mut self,
+        x: U,
+        y: U,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
         self.grid.fill_tile(x.into(), y.into(), dir, size);
     }
 
     #[inline]
-    pub fn clear_tile<U: Into<u32>>(&mut self, x: U, y: U, dir: Direction, size: UnitInterval) {
+    pub fn clear_tile<U: Into<u32>>(
+        &mut self,
+        x: U,
+        y: U,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
         self.grid.clear_tile(x.into(), y.into(), dir, size);
+    }
+
+    pub fn set_fill_color(self, color: Color) -> Self {
+        let prev_color =
+            self.prev_color.unwrap_or(self.grid.set_fill_color(color));
+
+        DrawHandle {
+            grid: self.grid,
+            prev_color: Some(prev_color),
+        }
     }
 }
 

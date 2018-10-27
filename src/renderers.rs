@@ -65,14 +65,26 @@ impl DrawGrid for CanvasEnv {
     }
 
     #[inline(always)]
-    fn fill_tile(&mut self, x: u32, y: u32, dir: Direction, size: UnitInterval) {
+    fn fill_tile(
+        &mut self,
+        x: u32,
+        y: u32,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
         let (x, y, w, h) = self.partial_tile(x, y, dir, size);
 
         self.gc.fill_rect(x, y, w, h);
     }
 
     #[inline(always)]
-    fn clear_tile(&mut self, x: u32, y: u32, dir: Direction, size: UnitInterval) {
+    fn clear_tile(
+        &mut self,
+        x: u32,
+        y: u32,
+        dir: Direction,
+        size: UnitInterval,
+    ) {
         let (x, y, w, h) = self.partial_tile(x, y, dir, size);
 
         self.gc.clear_rect(x, y, w, h);
@@ -210,7 +222,8 @@ where
                     self.job.draw_tile(&env.gc, 1.0);
                     None
                 } else {
-                    let progress = (self.current_frame as f64) / (ANIMATION_FRAME_COUNT as f64);
+                    let progress = (self.current_frame as f64)
+                        / (ANIMATION_FRAME_COUNT as f64);
                     self.job.draw_tile(&env.gc, progress);
 
                     self.current_frame += if step > 0 { step } else { 1 };
@@ -248,7 +261,11 @@ impl CanvasTile for WorldUpdate {
         }
     }
 
-    fn draw_tile(&self, gc: &CanvasRenderingContext2d, normalized_progress: f64) {
+    fn draw_tile(
+        &self,
+        gc: &CanvasRenderingContext2d,
+        normalized_progress: f64,
+    ) {
         match self {
             WorldUpdate::SetWorldSize(_, _) => {}
             WorldUpdate::SetBlock { block, at } => {
@@ -265,10 +282,14 @@ impl CanvasTile for WorldUpdate {
                         let y = y + 2.0;
 
                         match dir {
-                            Direction::North => gc.fill_rect(x, y + ts - length, ts, length),
+                            Direction::North => {
+                                gc.fill_rect(x, y + ts - length, ts, length)
+                            }
                             Direction::South => gc.fill_rect(x, y, ts, length),
                             Direction::East => gc.fill_rect(x, y, length, ts),
-                            Direction::West => gc.fill_rect(x + ts - length, y, length, ts),
+                            Direction::West => {
+                                gc.fill_rect(x + ts - length, y, length, ts)
+                            }
                         }
                     }
                     Tile::Food => {
@@ -278,7 +299,8 @@ impl CanvasTile for WorldUpdate {
 
                         gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
                         gc.begin_path();
-                        let _ = gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
+                        let _ =
+                            gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
                         gc.fill();
 
                         gc.restore();
@@ -297,10 +319,14 @@ impl CanvasTile for WorldUpdate {
                     Some(dir) => {
                         let length = normalized_progress * ts;
                         match dir {
-                            Direction::North => gc.clear_rect(x, y + ts - length, ts, length),
+                            Direction::North => {
+                                gc.clear_rect(x, y + ts - length, ts, length)
+                            }
                             Direction::South => gc.clear_rect(x, y, ts, length),
                             Direction::East => gc.clear_rect(x, y, length, ts),
-                            Direction::West => gc.clear_rect(x + ts - length, y, length, ts),
+                            Direction::West => {
+                                gc.clear_rect(x + ts - length, y, length, ts)
+                            }
                         }
                     }
                     _ => {
@@ -320,23 +346,39 @@ pub struct WorldUpdateDraw {
 
 impl WorldUpdateDraw {
     fn draw_into<E: DrawGrid>(&mut self, env: &mut E) {
-        let t = UnitInterval::from_u8_and_range(self.current_frame, 0..self.total_frame);
+        let t = UnitInterval::from_u8_and_range(
+            self.current_frame,
+            0..self.total_frame,
+        );
 
         match self.update {
             WorldUpdate::Clear { prev_block, at } => {
-                env.with_defaults(|mut handle| match Tile::from(prev_block) {
-                    Tile::Snake => {
-                        handle.clear_tile(at.x, at.y, prev_block.into_direction_unchecked(), t)
-                    }
-                    _ => handle.clear_tile(at.x, at.y, Direction::East, UnitInterval::max_value()),
+                env.with_defaults(|mut env| match Tile::from(prev_block) {
+                    Tile::Snake => env.clear_tile(
+                        at.x,
+                        at.y,
+                        prev_block.into_direction_unchecked(),
+                        t,
+                    ),
+                    _ => env.clear_tile(
+                        at.x,
+                        at.y,
+                        Direction::East,
+                        UnitInterval::max_value(),
+                    ),
                 });
             }
             WorldUpdate::SetBlock { block, at } => match Tile::from(block) {
-                Tile::Food => env.with_fill_color(Color::Red, |mut handle| {
-                    handle.circle(at.x, at.y, t);
+                Tile::Food => env.with_fill_color(Color::Red, |mut env| {
+                    env.circle(at.x, at.y, t);
                 }),
-                Tile::Snake => env.with_defaults(|mut handle| {
-                    handle.fill_tile(at.x, at.y, block.into_direction_unchecked(), t);
+                Tile::Snake => env.with_defaults(|mut env| {
+                    env.fill_tile(
+                        at.x,
+                        at.y,
+                        block.into_direction_unchecked(),
+                        t,
+                    );
                 }),
                 _ => {}
             },
