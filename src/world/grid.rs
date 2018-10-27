@@ -18,9 +18,11 @@ impl Grid {
         }
     }
 
+    #[inline(always)]
     pub(super) fn width(&self) -> u32 {
         self.width
     }
+    #[inline(always)]
     pub(super) fn height(&self) -> u32 {
         self.height
     }
@@ -69,9 +71,13 @@ impl Grid {
         let width = self.width;
         let height = self.height;;
 
-        coord
-            .inside(width, height)
-            .map(|Coordinate { x, y }| (y * width + x) as usize)
+        let Coordinate { x, y } = coord;
+
+        if x >= width || x >= height {
+            None
+        } else {
+            Some((y * width + x) as usize)
+        }
     }
 
     #[cfg(test)]

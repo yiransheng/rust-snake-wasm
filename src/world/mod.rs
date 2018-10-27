@@ -72,6 +72,8 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>> {
         if let Some(dir) = cmd {
             self.set_direction(dir);
+            // } else {
+            // return Ok(None);
         }
 
         match self.state {
@@ -130,7 +132,9 @@ impl<R: Rng> World<R> {
         let head_block = self.get_block(self.head);
         let next_head = self
             .head
-            .move_towards(head_block.into_direction_unchecked());
+            .move_towards(head_block.into_direction_unchecked())
+            .into_coordinate_wrapping(self.grid.width(), self.grid.height());
+
         let next_head_block = self.get_block(next_head);
 
         match next_head_block.into() {
@@ -140,7 +144,8 @@ impl<R: Rng> World<R> {
                 Ok(next_head_block)
             }
             Tile::Snake => Err(UpdateError::CollideBody),
-            Tile::OutOfBound => Err(UpdateError::OutOfBound),
+            _ => unreachable!(),
+            // Tile::OutOfBound => Err(UpdateError::OutOfBound),
         }
     }
 
@@ -149,7 +154,9 @@ impl<R: Rng> World<R> {
             Tile::Empty => {
                 let tail = self.tail;
                 let tail_block = self.get_block(tail);
-                let next_tail = tail.move_towards(tail_block.into_direction_unchecked());
+                let next_tail = tail
+                    .move_towards(tail_block.into_direction_unchecked())
+                    .into_coordinate_wrapping(self.grid.width(), self.grid.height());
 
                 self.tail = next_tail;
 

@@ -154,9 +154,13 @@ impl CanvasTile for WorldUpdate {
 
                 match Tile::from(*block) {
                     Tile::Snake => {
-                        let ts = TILE_SIZE;
+                        let ts = TILE_SIZE - 4.0;
                         let dir = block.into_direction_unchecked();
                         let length = normalized_progress * ts;
+
+                        let x = x + 2.0;
+                        let y = y + 2.0;
+
                         match dir {
                             Direction::North => gc.fill_rect(x, y + ts - length, ts, length),
                             Direction::South => gc.fill_rect(x, y, ts, length),

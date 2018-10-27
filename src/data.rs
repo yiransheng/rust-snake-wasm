@@ -121,42 +121,42 @@ impl Coordinate {
             y: y as u32,
         }
     }
-    pub fn move_towards(self, dir: Direction) -> Self {
+    pub fn move_towards(self, dir: Direction) -> UncheckedCoordinate {
         let Coordinate { x, y } = self;
         match dir {
-            Direction::North => Coordinate {
-                x,
-                y: y.wrapping_sub(1), // dealing with -1
-            },
-            Direction::South => Coordinate {
-                x,
-                y: y.wrapping_add(1),
-            },
-            Direction::East => Coordinate {
-                x: x.wrapping_add(1),
-                y,
-            },
-            Direction::West => Coordinate {
-                x: x.wrapping_sub(1),
-                y,
-            },
+            Direction::North => UncheckedCoordinate::new(x, y.wrapping_sub(1)),
+            Direction::South => UncheckedCoordinate::new(x, y.wrapping_add(1)),
+            Direction::East => UncheckedCoordinate::new(x.wrapping_add(1), y),
+            Direction::West => UncheckedCoordinate::new(x.wrapping_sub(1), y),
         }
     }
-    #[inline]
-    pub fn inside(self, width: u32, height: u32) -> Option<Self> {
-        if self.x < width && self.y < height {
-            Some(self)
+}
+
+pub struct UncheckedCoordinate {
+    inner: Coordinate,
+}
+impl UncheckedCoordinate {
+    #[inline(always)]
+    fn new(x: u32, y: u32) -> Self {
+        UncheckedCoordinate {
+            inner: Coordinate { x, y },
+        }
+    }
+
+    pub fn into_coordinate(self, bound_width: u32, bound_height: u32) -> Option<Coordinate> {
+        if self.inner.x < bound_width && self.inner.y < bound_height {
+            Some(self.inner)
         } else {
             None
         }
     }
-    #[inline]
-    pub fn wrap_inside(self, width: u32, height: u32) -> Self {
-        let Coordinate { x, y } = self;
+
+    pub fn into_coordinate_wrapping(self, bound_width: u32, bound_height: u32) -> Coordinate {
+        let Coordinate { x, y } = self.inner;
 
         Coordinate {
-            x: x.wrapping_add(width) % width,
-            y: y.wrapping_add(height) % height,
+            x: x.wrapping_add(bound_width) % bound_width,
+            y: y.wrapping_add(bound_height) % bound_height,
         }
     }
 }
