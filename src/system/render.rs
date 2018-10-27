@@ -103,7 +103,7 @@ pub trait DrawGrid {
     where
         Self: Sized,
         C: Into<Color>,
-        F: FnMut(DrawHandle<Self>),
+        F: for<'a> FnMut(DrawHandle<'a, Self>),
     {
         let prev_color = self.set_fill_color(color.into());
 
@@ -152,14 +152,13 @@ where
         self.grid.clear_tile(x.into(), y.into(), dir, size);
     }
 
-    pub fn set_fill_color(self, color: Color) -> Self {
-        let prev_color =
-            self.prev_color.unwrap_or(self.grid.set_fill_color(color));
-
-        DrawHandle {
-            grid: self.grid,
-            prev_color: Some(prev_color),
-        }
+    #[inline]
+    pub fn with_fill_color<C, F>(&mut self, color: C, mut f: F)
+    where
+        C: Into<Color>,
+        F: for<'b> FnMut(DrawHandle<'b, G>),
+    {
+        self.grid.with_fill_color(color, f);
     }
 }
 

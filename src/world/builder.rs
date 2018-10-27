@@ -58,7 +58,7 @@ impl SnakeBuilder {
         let next_head = self.next_head;
         let next_head_block = self.grid.get_block(next_head);
 
-        assert!(Tile::from(next_head_block) == Tile::Empty);
+        assert!(next_head_block.is_empty());
 
         if !self.grid.set_block(next_head, Block::from(dir)) {
             return self;

@@ -37,9 +37,9 @@ impl Key {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Tile {
+pub enum Tile<S = ()> {
     Empty,
-    Snake,
+    Snake(S),
     Food,
     OutOfBound,
 }
@@ -174,7 +174,19 @@ impl From<Block> for Tile {
     fn from(b: Block) -> Tile {
         match b.raw {
             0 => Tile::Empty,
-            b if (b & 0b1000_0000) != 0 => Tile::Snake,
+            b if (b & 0b1000_0000) != 0 => Tile::Snake(()),
+            b if (b & 0b0100_0000) != 0 => Tile::Food,
+            _ => Tile::OutOfBound,
+        }
+    }
+}
+impl From<Block> for Tile<Direction> {
+    fn from(block: Block) -> Tile<Direction> {
+        match block.raw {
+            0 => Tile::Empty,
+            b if (b & 0b1000_0000) != 0 => {
+                Tile::Snake(block.into_direction_unchecked())
+            }
             b if (b & 0b0100_0000) != 0 => Tile::Food,
             _ => Tile::OutOfBound,
         }
@@ -227,23 +239,21 @@ mod tests {
         for x in 0..=u8::max_value() {
             // make sure every u8 bit pattern result in a valid Direction
             // ...that is, not getting SIGIL or something
-            unsafe {
-                let b = Block::from_raw(x);
-                let tile = Tile::from(b);
+            let b = unsafe { Block::from_raw(x) };
+            let tile = Tile::from(b);
 
-                if b.is_snake() {
-                    assert_eq!(tile, Tile::Snake);
-                }
-
-                let dir = b.into_direction_unchecked();
-
-                assert!(
-                    dir == Direction::North
-                        || dir == Direction::South
-                        || dir == Direction::East
-                        || dir == Direction::West
-                );
+            if b.is_snake() {
+                assert_eq!(tile, Tile::Snake(()));
             }
+
+            let dir = b.into_direction_unchecked();
+
+            assert!(
+                dir == Direction::North
+                    || dir == Direction::South
+                    || dir == Direction::East
+                    || dir == Direction::West
+            );
         }
     }
 }

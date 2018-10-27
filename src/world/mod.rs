@@ -138,14 +138,15 @@ impl<R: Rng> World<R> {
             .into_coordinate_wrapping(self.grid.width(), self.grid.height());
 
         let next_head_block = self.get_block(next_head);
+        let tile: Tile = next_head_block.into();
 
-        match next_head_block.into() {
+        match tile {
             Tile::Empty | Tile::Food => {
                 self.head = next_head;
                 self.set_block(next_head, head_block);
                 Ok(next_head_block)
             }
-            Tile::Snake => Err(UpdateError::CollideBody),
+            Tile::Snake(_) => Err(UpdateError::CollideBody),
             _ => unreachable!(),
             // Tile::OutOfBound => Err(UpdateError::OutOfBound),
         }
@@ -180,7 +181,7 @@ impl<R: Rng> World<R> {
                     at: coord,
                 })
             }
-            Tile::Snake => Err(UpdateError::CollideBody),
+            Tile::Snake(_) => Err(UpdateError::CollideBody),
             Tile::OutOfBound => Err(UpdateError::OutOfBound),
         }
     }
@@ -188,7 +189,7 @@ impl<R: Rng> World<R> {
     fn spawn_food(&mut self) -> Coordinate {
         loop {
             let coord = self.grid.random_coordinate(&mut self.rng);
-            let current_tile = Tile::from(self.grid.get_block(coord));
+            let current_tile: Tile = Tile::from(self.grid.get_block(coord));
 
             if current_tile == Tile::Empty {
                 self.set_block(coord, Block::food());

@@ -5,7 +5,7 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
 use data::{Direction, Tile};
-use system::{CanvasTile, Color, DrawGrid, Render, UnitInterval};
+use system::{CanvasTile, Color, DrawGrid, DrawHandle, Render, UnitInterval};
 use world::WorldUpdate;
 
 pub struct CanvasEnv {
@@ -273,9 +273,8 @@ impl CanvasTile for WorldUpdate {
                 let y = f64::from(at.y) * TILE_SIZE;
 
                 match Tile::from(*block) {
-                    Tile::Snake => {
+                    Tile::Snake(dir) => {
                         let ts = TILE_SIZE - 4.0;
-                        let dir = block.into_direction_unchecked();
                         let length = normalized_progress * ts;
 
                         let x = x + 2.0;
@@ -345,7 +344,7 @@ pub struct WorldUpdateDraw {
 }
 
 impl WorldUpdateDraw {
-    fn draw_into<E: DrawGrid>(&mut self, env: &mut E) {
+    fn draw_into<E: DrawGrid>(&mut self, mut env: DrawHandle<E>) {
         let t = UnitInterval::from_u8_and_range(
             self.current_frame,
             0..self.total_frame,
@@ -353,33 +352,21 @@ impl WorldUpdateDraw {
 
         match self.update {
             WorldUpdate::Clear { prev_block, at } => {
-                env.with_defaults(|mut env| match Tile::from(prev_block) {
-                    Tile::Snake => env.clear_tile(
-                        at.x,
-                        at.y,
-                        prev_block.into_direction_unchecked(),
-                        t,
-                    ),
+                match Tile::from(prev_block) {
+                    Tile::Snake(dir) => env.clear_tile(at.x, at.y, dir, t),
                     _ => env.clear_tile(
                         at.x,
                         at.y,
                         Direction::East,
                         UnitInterval::max_value(),
                     ),
-                });
+                }
             }
             WorldUpdate::SetBlock { block, at } => match Tile::from(block) {
                 Tile::Food => env.with_fill_color(Color::Red, |mut env| {
                     env.circle(at.x, at.y, t);
                 }),
-                Tile::Snake => env.with_defaults(|mut env| {
-                    env.fill_tile(
-                        at.x,
-                        at.y,
-                        block.into_direction_unchecked(),
-                        t,
-                    );
-                }),
+                Tile::Snake(dir) => env.fill_tile(at.x, at.y, dir, t),
                 _ => {}
             },
             _ => {}
