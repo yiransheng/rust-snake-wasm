@@ -9,7 +9,7 @@ if [ "$1" = "--release" ]; then
   FLAG=$1
 fi
 
-rm -rf ./dist/*.wasm
+rm -rf ./docs/*.wasm
 rm -rf ./snake_wasm.js
 rm -rf ./snake_wasm_bg.wasm
 
@@ -23,6 +23,6 @@ else
   wasm-bindgen ./target/wasm32-unknown-unknown/debug/snake_wasm.wasm --out-dir .
 fi
 
-# wasm-opt -Os ./dist/*.wasm
+# wasm-opt -Os ./docs/*.wasm
 
 yarn build
