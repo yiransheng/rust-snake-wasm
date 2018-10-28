@@ -1,13 +1,34 @@
-#![feature(type_ascription, arbitrary_self_types, generators, generator_trait)]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
+#![feature(
+    alloc,
+    core_intrinsics,
+    core_panic_info,
+    panic_implementation,
+    lang_items,
+    alloc_error_handler,
+    type_ascription,
+    arbitrary_self_types,
+    generators,
+    generator_trait
+)]
 
+#[cfg(not(any(feature = "std", test, debug)))]
+extern crate core as std;
+
+#[macro_use]
+extern crate alloc;
 extern crate console_error_panic_hook;
+
 extern crate js_sys;
 extern crate void;
 extern crate wasm_bindgen;
 extern crate web_sys;
+extern crate wee_alloc;
 
 extern crate arraydeque;
 extern crate rand;
+
+use alloc::boxed::Box;
 
 use std::ops::Generator;
 use std::panic;
@@ -31,6 +52,10 @@ use renderers::{CanvasEnv, WorldUpdateDraw};
 use system::Model;
 use world::{WorldBuilder, WorldUpdate};
 
+#[global_allocator]
+#[cfg(not(any(feature = "std", test, debug)))]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 #[wasm_bindgen(module = "./game-loop")]
 extern "C" {
     type GameLoop;
@@ -47,6 +72,7 @@ extern "C" {
 
 #[wasm_bindgen]
 pub fn main() {
+    #[cfg(feature = "std")]
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 
     let facing = Direction::East;

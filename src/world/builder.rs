@@ -1,5 +1,7 @@
-use rand::{Rng, SeedableRng};
+use alloc::vec::Vec;
 use std::convert::From;
+
+use rand::{Rng, SeedableRng};
 
 use data::{Block, Coordinate, Direction};
 

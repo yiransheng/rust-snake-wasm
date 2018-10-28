@@ -1,4 +1,6 @@
-use data::{Block, Coordinate, Direction};
+use alloc::vec::Vec;
+
+use data::{Block, Coordinate};
 use rand::Rng;
 
 pub struct Grid {

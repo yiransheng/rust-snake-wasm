@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use rand::Rng;
 use std::convert::{From, Into};
 
@@ -108,7 +109,7 @@ impl<R: Rng> World<R> {
         self.grid.clear();
 
         let initial_snake =
-            ::std::mem::replace(&mut self.initial_snake, vec![]);
+            ::std::mem::replace(&mut self.initial_snake, Vec::new());
         let n = initial_snake.len();
 
         for (i, (at, dir)) in initial_snake.iter().enumerate() {
