@@ -15,6 +15,14 @@ impl Into<WorldUpdate> for VariableFrame<WorldUpdate> {
         self.update
     }
 }
+impl From<WorldUpdate> for VariableFrame<WorldUpdate> {
+    fn from(u: WorldUpdate) -> Self {
+        VariableFrame {
+            update: u,
+            frame_count: ANIMATION_FRAME_COUNT,
+        }
+    }
+}
 impl<T> VariableFrame<T> {
     pub fn pack(both: (T, u8)) -> Self {
         VariableFrame {

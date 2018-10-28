@@ -41,12 +41,14 @@ mod macros;
 mod acceleration;
 mod constants;
 mod data;
+mod dead;
 mod renderers;
 mod system;
 mod world;
 
 use acceleration::{RenderSpeed, VariableFrame};
 use data::{Direction, Key};
+use dead::Dead;
 use renderers::{CanvasEnv, WorldUpdateDraw};
 use system::Model;
 use world::{WorldBuilder, WorldUpdate};
@@ -88,6 +90,7 @@ pub fn main() {
 
     let game = world
         .zip_with(RenderSpeed::new(facing), VariableFrame::pack)
+        .alternating::<Key, _>(Dead::new())
         .make_game(CanvasEnv::new());
 
     let (cmd_buffer, mut generator) =

@@ -20,6 +20,7 @@ pub enum WorldUpdate {
     SetBlock { block: Block, at: Coordinate },
     Clear { prev_block: Block, at: Coordinate },
     SetWorldSize(u32, u32),
+    Dead,
 }
 
 #[derive(Debug, Copy, Clone)]

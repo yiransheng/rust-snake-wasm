@@ -97,6 +97,8 @@ pub trait DrawGrid {
         size: UnitInterval,
     );
 
+    fn show_game_over(&mut self);
+
     fn with_fill_color<F>(&mut self, color: Color, mut f: F)
     where
         Self: Sized,

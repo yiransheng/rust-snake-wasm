@@ -3,6 +3,7 @@ use alloc::rc::Rc;
 
 use std::cell::RefCell;
 use std::iter::{IntoIterator, Map, Zip};
+use std::marker::PhantomData;
 
 use std::ops::Generator;
 
@@ -42,7 +43,6 @@ pub trait Model<'m> {
         Box::new(Game { model: self, env })
     }
 
-    #[inline]
     fn zip_with<T, R, F>(self, other: R, f: F) -> ZipWith<Self, R, F>
     where
         R: Model<'m, Cmd = Self::Cmd, Error = Void>,
@@ -54,6 +54,34 @@ pub trait Model<'m> {
             left: self,
             right: other,
             f,
+        }
+    }
+
+    fn alternating_after<C, B>(self, other: B) -> Alternating<Self, B, C>
+    where
+        Self: Sized,
+        B: Model<'m, Update = Self::Update>,
+        C: Into<Option<Self::Cmd>> + Into<Option<B::Cmd>>,
+    {
+        Alternating {
+            swapped: true,
+            left: self,
+            right: other,
+            _cmd: PhantomData,
+        }
+    }
+
+    fn alternating<C, B>(self, other: B) -> Alternating<Self, B, C>
+    where
+        Self: Sized,
+        B: Model<'m, Update = Self::Update>,
+        C: Into<Option<Self::Cmd>> + Into<Option<B::Cmd>>,
+    {
+        Alternating {
+            swapped: false,
+            left: self,
+            right: other,
+            _cmd: PhantomData,
         }
     }
 }
@@ -113,59 +141,95 @@ where
     }
 }
 
-/*
- * pub struct Empty<C, U> {
- *     _cmd: PhantomData<C>,
- *     _update: PhantomData<U>,
- * }
- *
- * impl<'m, C, U> Model<'m> for Empty<C, U>
- * where
- *     U: 'm,
- * {
- *     type Cmd = C;
- *     type Update = U;
- *     type Error = GameOver;
- *     type State = ::std::iter::Empty<U>;
- *
- *     fn initialize(&'m mut self) -> Self::State {
- *         ::std::iter::empty()
- *     }
- *
- *     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
- *         Err(GameOver)
- *     }
- *
- *     fn tear_down(&mut self) {}
- * }
- *
- * pub struct Replay<C, U> {
- *     _cmd: PhantomData<C>,
- *     updates: Vec<U>,
- *     index: usize,
- * }
- * impl<'m, C, U> Model<'m> for Replay<C, U>
- * where
- *     U: Clone + 'm,
- * {
- *     type Cmd = C;
- *     type Update = U;
- *     type Error = GameOver;
- *     type State = ::std::iter::Empty<U>;
- *
- *     fn initialize(&'m mut self) -> Self::State {
- *         self.index = 0;
- *         ::std::iter::empty()
- *     }
- *
- *     fn step(&mut self, _cmd: Option<Self::Cmd>) -> Result<Self::Update, Self::Error> {
- *         self.updates.get(self.index).cloned().ok_or(GameOver)
- *     }
- *
- *     fn tear_down(&mut self) {}
- * }
- *
- */
+pub enum Either<A, B> {
+    Left(A),
+    Right(B),
+}
+impl<A, B> Iterator for Either<A, B>
+where
+    A: Iterator,
+    B: Iterator<Item = A::Item>,
+{
+    type Item = A::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Either::Left(ref mut a) => a.next(),
+            Either::Right(ref mut b) => b.next(),
+        }
+    }
+}
+
+pub struct Alternating<A, B, C> {
+    swapped: bool,
+    left: A,
+    right: B,
+    _cmd: PhantomData<C>,
+}
+impl<A, B, C> Alternating<A, B, C> {
+    #[inline]
+    fn current(&mut self) -> Either<&mut A, &mut B> {
+        if self.swapped {
+            Either::Right(&mut self.right)
+        } else {
+            Either::Left(&mut self.left)
+        }
+    }
+
+    fn swap(&mut self) {
+        self.swapped = !self.swapped;
+    }
+}
+
+impl<'m, Cmd, A, B> Model<'m> for Alternating<A, B, Cmd>
+where
+    A: Model<'m>,
+    B: Model<'m, Update = A::Update>,
+    Cmd: Into<Option<A::Cmd>> + Into<Option<B::Cmd>>,
+{
+    type Cmd = Cmd;
+    type State = Either<
+        <A::State as IntoIterator>::IntoIter,
+        <B::State as IntoIterator>::IntoIter,
+    >;
+    type Update = A::Update;
+    type Error = GameOver;
+
+    fn initialize(&'m mut self) -> Self::State {
+        match self.current() {
+            Either::Left(a) => Either::Left(a.initialize().into_iter()),
+            Either::Right(b) => Either::Right(b.initialize().into_iter()),
+        }
+    }
+
+    #[inline]
+    fn step(
+        &mut self,
+        cmd: Option<Self::Cmd>,
+    ) -> Result<Option<Self::Update>, Self::Error> {
+        match self.current() {
+            Either::Left(a) => match a.step(cmd.and_then(|c| c.into())) {
+                Ok(u) => return Ok(u),
+                _ => {}
+            },
+            Either::Right(b) => match b.step(cmd.and_then(|c| c.into())) {
+                Ok(u) => return Ok(u),
+                _ => {}
+            },
+        }
+
+        self.swap();
+
+        Err(GameOver)
+    }
+
+    fn tear_down(&mut self) {
+        match self.current() {
+            Either::Left(a) => a.tear_down(),
+            Either::Right(b) => b.tear_down(),
+        }
+    }
+}
 
 pub struct Game<M, E> {
     model: M,
@@ -193,7 +257,6 @@ where
 
         (buf.clone(), move || loop {
             {
-                this.env.clear();
                 let iter = this.model.initialize();
                 for update in iter {
                     let renderer = R::new_patch(update);

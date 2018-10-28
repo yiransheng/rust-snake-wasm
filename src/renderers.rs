@@ -133,6 +133,15 @@ impl DrawGrid for CanvasEnv {
 
         // gc.restore();
     }
+
+    fn show_game_over(&mut self) {
+        // best effort of centering text
+        let x = self.canvas.width() as f64 / 2.0 - 120.0;
+        let y = self.canvas.height() as f64 / 2.0 - 24.0;
+
+        self.gc.set_font("36px serif");
+        let _ = self.gc.fill_text("Game Over", x, y);
+    }
 }
 
 impl CanvasEnv {
@@ -237,6 +246,7 @@ where
 
         match self.update {
             WorldUpdate::SetWorldSize(w, h) => {
+                env.clear();
                 env.setup(TILE_SIZE, w, h);
                 self.total_frame
             }
@@ -261,6 +271,10 @@ where
                     _ => {}
                 }
                 self.current_frame + 1
+            }
+            WorldUpdate::Dead => {
+                env.show_game_over();
+                self.total_frame
             }
         }
     }
