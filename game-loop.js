@@ -1,3 +1,14 @@
+import HammerTime from 'hammerjs';
+
+const keybox = '.keybox';
+
+export class Keybox {
+  constructor() {
+    this._element = document.querySelector(keybox);
+  }
+
+}
+
 export class GameLoop {
   constructor(fn) {
     this._onEnterFrame = fn;
