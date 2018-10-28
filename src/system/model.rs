@@ -34,7 +34,6 @@ pub trait Model<'m> {
 
     fn tear_down(&mut self);
 
-    #[inline]
     fn make_game<E>(self, env: E) -> Box<Game<Self, E>>
     where
         Self: Sized,
@@ -91,6 +90,7 @@ where
             .map(&self.f)
     }
 
+    #[inline]
     fn step(
         &mut self,
         cmd: Option<Self::Cmd>,
@@ -202,7 +202,8 @@ where
             }
 
             loop {
-                let cmd = buf.borrow_mut().read().and_then(|c| c.into());
+                // render loop
+                let cmd = buf.borrow_mut().read();
                 let update = this.model.step(cmd);
 
                 match update {
