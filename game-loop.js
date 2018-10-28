@@ -1,16 +1,29 @@
-import HammerTime from 'hammerjs';
+/* @flow */
+
+import Hammer from 'hammerjs';
 
 const keybox = '.keybox';
 
 export class Keybox {
   constructor() {
     this._element = document.querySelector(keybox);
+    this._hammer = new Hammer(this._element);
   }
 
 }
 
 export class GameLoop {
-  constructor(fn) {
+  _onEnterFrame: Function;
+  _rafId: ?number;
+  _key: number;
+  _unlistens: Array<Function>;
+
+  _run: Function;
+  _onKeyUp: Function;
+  _onKeyDown: Function;
+
+
+  constructor(fn: Function) {
     this._onEnterFrame = fn;
     this._rafId = null;
     this._unlistens = [];
@@ -21,12 +34,12 @@ export class GameLoop {
     this._onKeyUp = this._onKeyUp.bind(this);
   }
 
-  get running() {
+  running(): boolean {
     return this._rafId !== null;
   }
 
   start() {
-    if (!this.running) {
+    if (!this.running()) {
       this._rafId = window.requestAnimationFrame(this._run);
       this._unlistens.push(addEventLisitener("keydown", this._onKeyDown));
       this._unlistens.push(addEventLisitener("keyup", this._onKeyUp));
@@ -36,8 +49,8 @@ export class GameLoop {
     return false;
   }
   stop() {
-    if (this.running) {
-      cancelAnimationFrame(this._rafId);
+    if (this.running()) {
+      this._rafId && cancelAnimationFrame(this._rafId);
       this._rafId = null;
       this._unlistens.forEach(f => f());
       this._unlistens.length = 0;
@@ -48,7 +61,7 @@ export class GameLoop {
   }
 
   _run() {
-    if (this.running) {
+    if (this.running()) {
       try {
         this._onEnterFrame(this._key);
         this._rafId = window.requestAnimationFrame(this._run);
@@ -58,7 +71,7 @@ export class GameLoop {
     }
   }
 
-  _onKeyDown(e) {
+  _onKeyDown(e: KeyboardEvent) {
     switch (e.keyCode) {
       case 13:
       //case 27:
