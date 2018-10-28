@@ -31,7 +31,6 @@ extern crate rand;
 use alloc::boxed::Box;
 
 use std::ops::Generator;
-use std::panic;
 
 use rand::rngs::SmallRng;
 use wasm_bindgen::prelude::*;

@@ -40,7 +40,7 @@ impl CanvasEnv {
         CanvasEnv {
             canvas,
             gc: context,
-            tile_size: TILE_SIZE,
+            tile_size: TILE_SIZE as f64,
             color: Color::Black,
         }
     }

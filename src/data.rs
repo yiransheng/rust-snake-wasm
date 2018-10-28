@@ -51,6 +51,7 @@ pub struct Block {
 
 impl Block {
     #[inline]
+    #[allow(dead_code)]
     pub unsafe fn from_raw(raw: u8) -> Self {
         Block { raw }
     }
@@ -69,6 +70,7 @@ impl Block {
         Block { raw: 0b0011_1111 }
     }
     #[inline]
+    #[allow(dead_code)]
     pub fn into_raw(self) -> u8 {
         self.raw
     }
@@ -77,6 +79,7 @@ impl Block {
         self.raw == 0
     }
     #[inline]
+    #[allow(dead_code)]
     pub fn is_food(self) -> bool {
         // second bit is 1
         self.raw & 0b0100_0000 != 0
