@@ -215,7 +215,7 @@ where
 
         match self.update {
             WorldUpdate::SetWorldSize(w, h) => {
-                env.setup(10, w, h);
+                env.setup(TILE_SIZE, w, h);
                 self.total_frame
             }
             WorldUpdate::Clear { prev_block, at } => {
