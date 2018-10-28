@@ -51,6 +51,27 @@ impl DrawGrid for CanvasEnv {
         self.tile_size = tile_size as f64;
         self.canvas.set_width(width * tile_size);
         self.canvas.set_height(height * tile_size);
+
+        let width_pixel = (width * tile_size) as f64;
+        let height_pixel = (height * tile_size) as f64;
+
+        self.gc.set_stroke_style(&"rgba(0, 0, 0, 0.05)".into());
+
+        for x in 1..width {
+            let x = (x * tile_size) as f64;
+            self.gc.begin_path();
+            self.gc.move_to(x, 0.0);
+            self.gc.line_to(x, height_pixel);
+            self.gc.stroke();
+        }
+
+        for y in 1..height {
+            let y = (y * tile_size) as f64;
+            self.gc.begin_path();
+            self.gc.move_to(0.0, y);
+            self.gc.line_to(width_pixel, y);
+            self.gc.stroke();
+        }
     }
 
     fn clear(&mut self) {
@@ -94,6 +115,7 @@ impl DrawGrid for CanvasEnv {
         let (x, y, w, h) = self.partial_tile(x, y, dir, size);
 
         self.gc.clear_rect(x, y, w, h);
+        self.gc.stroke_rect(x, y, self.tile_size, self.tile_size);
     }
 
     fn circle(&mut self, x: u32, y: u32, radius: UnitInterval) {

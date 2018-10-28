@@ -72,13 +72,13 @@ extern "C" {
 #[wasm_bindgen]
 pub fn main() {
     #[cfg(feature = "std")]
-    panic::set_hook(Box::new(console_error_panic_hook::hook));
+    ::std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
     let facing = Direction::East;
 
     let world = WorldBuilder::new()
-        .width(96)
-        .height(48)
+        .width(64)
+        .height(32)
         .set_snake(1, 1)
         .extend(facing)
         .extend(facing)
