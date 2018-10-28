@@ -6,11 +6,10 @@ use std::iter::{IntoIterator, Map, Zip};
 
 use std::ops::Generator;
 
-use arraydeque::{ArrayDeque, Wrapping};
 use void::Void;
 
+use super::input_buffer::InputDblBuffer;
 use super::render::{DrawGrid, IncrRender};
-use constants::ANIMATION_FRAME_COUNT;
 
 pub struct GameOver;
 
@@ -167,87 +166,6 @@ where
  * }
  *
  */
-type InputBuffer<T> = ArrayDeque<[T; ANIMATION_FRAME_COUNT as usize], Wrapping>;
-
-pub struct InputDblBuffer<T> {
-    swapped: bool,
-
-    first: InputBuffer<T>,
-    second: InputBuffer<T>,
-}
-
-impl<T> InputDblBuffer<T> {
-    fn new() -> Self {
-        InputDblBuffer {
-            swapped: false,
-            first: ArrayDeque::new(),
-            second: ArrayDeque::new(),
-        }
-    }
-
-    pub fn write(&mut self, x: T) -> Option<()>
-    where
-        T: Eq,
-    {
-        let next = self.next();
-
-        match next.back() {
-            Some(prev) if prev == &x => {
-                return None;
-            }
-            _ => {}
-        }
-
-        next.push_back(x);
-        Some(())
-    }
-
-    fn current(&mut self) -> &mut InputBuffer<T> {
-        if self.swapped {
-            &mut self.first
-        } else {
-            &mut self.second
-        }
-    }
-    fn next(&mut self) -> &mut InputBuffer<T> {
-        if self.swapped {
-            &mut self.second
-        } else {
-            &mut self.first
-        }
-    }
-    fn swap_if<F>(&mut self, f: F)
-    where
-        F: Fn(&InputBuffer<T>, &InputBuffer<T>) -> bool,
-    {
-        let should_swap;
-        {
-            let curr;
-            let next;
-
-            if self.swapped {
-                curr = &self.first;
-                next = &self.second;
-            } else {
-                curr = &self.second;
-                next = &self.first;
-            }
-
-            should_swap = f(curr, next);
-        }
-        if should_swap {
-            self.swapped = !self.swapped;
-            self.next().clear();
-        }
-    }
-    fn read(&mut self) -> Option<T> {
-        self.current().pop_front()
-    }
-    fn clear_both(&mut self) {
-        self.first.clear();
-        self.second.clear();
-    }
-}
 
 pub struct Game<M, E> {
     model: M,
@@ -296,7 +214,7 @@ where
                     Err(_) => break,
                 }
 
-                buf.borrow_mut().swap_if(|curr, next| {
+                buf.borrow_mut().swap_when(|curr, next| {
                     let a =
                         curr.iter().filter(|t| (**t).into().is_some()).count();
                     let b =

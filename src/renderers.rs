@@ -55,7 +55,7 @@ impl DrawGrid for CanvasEnv {
         let width_pixel = (width * tile_size) as f64;
         let height_pixel = (height * tile_size) as f64;
 
-        self.gc.set_stroke_style(&"rgba(0, 0, 0, 0.05)".into());
+        self.gc.set_stroke_style(&"rgba(0, 0, 0, 0.02)".into());
 
         for x in 1..width {
             let x = (x * tile_size) as f64;

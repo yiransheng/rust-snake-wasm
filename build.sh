@@ -23,6 +23,6 @@ else
   wasm-bindgen ./target/wasm32-unknown-unknown/debug/snake_wasm.wasm --out-dir .
 fi
 
-# wasm-opt -Os snake_wasm_bg.wasm -o snake_wasm.wasm
+# wasm-opt -Os ./dist/*.wasm
 
 yarn build
