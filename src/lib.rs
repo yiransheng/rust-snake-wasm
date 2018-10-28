@@ -1,9 +1,4 @@
-#![feature(
-    type_ascription,
-    arbitrary_self_types,
-    generators,
-    generator_trait
-)]
+#![feature(type_ascription, arbitrary_self_types, generators, generator_trait)]
 
 extern crate console_error_panic_hook;
 extern crate js_sys;
@@ -58,7 +53,7 @@ pub fn main() {
 
     let world = WorldBuilder::new()
         .width(96)
-        .height(64)
+        .height(48)
         .set_snake(1, 1)
         .extend(facing)
         .extend(facing)

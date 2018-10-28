@@ -48,6 +48,7 @@ impl UnitInterval {
         self.0 * v
     }
     #[inline(always)]
+    #[allow(dead_code)]
     pub fn supplement(self) -> Self {
         UnitInterval(1.0 - self.0)
     }
@@ -65,6 +66,15 @@ impl Default for UnitInterval {
 pub enum Color {
     Red,
     Black,
+}
+
+impl Color {
+    pub fn to_rgb(self) -> &'static str {
+        match self {
+            Color::Black => "rgb(34, 34, 34)",
+            Color::Red => "rgb(240, 10, 10)",
+        }
+    }
 }
 
 pub trait DrawGrid {

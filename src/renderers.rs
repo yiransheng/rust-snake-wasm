@@ -13,6 +13,7 @@ pub struct CanvasEnv {
     canvas: HtmlCanvasElement,
     gc: CanvasRenderingContext2d,
     tile_size: f64,
+    color: Color,
 }
 impl CanvasEnv {
     pub fn new() -> Self {
@@ -34,12 +35,13 @@ impl CanvasEnv {
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
 
-        context.set_fill_style(&"rgba(0, 0, 0, 1)".into());
+        context.set_fill_style(&Color::Black.to_rgb().into());
 
         CanvasEnv {
             canvas,
             gc: context,
             tile_size: TILE_SIZE,
+            color: Color::Black,
         }
     }
 }
@@ -62,7 +64,10 @@ impl DrawGrid for CanvasEnv {
 
     // returns current fill color
     fn set_fill_color(&mut self, color: Color) -> Color {
-        color
+        let prev_color = self.color;
+        self.color = color;
+        self.gc.set_fill_style(&color.to_rgb().into());
+        prev_color
     }
 
     #[inline(always)]
