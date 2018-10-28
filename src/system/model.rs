@@ -180,7 +180,7 @@ where
     pub fn new_game<R, Input>(
         self: Box<Self>,
     ) -> (
-        Rc<RefCell<InputDblBuffer<Input>>>,
+        Rc<RefCell<InputDblBuffer<Cmd>>>,
         impl Generator<Yield = (), Return = ()>,
     )
     where
@@ -214,14 +214,8 @@ where
                     Err(_) => break,
                 }
 
-                buf.borrow_mut().swap_when(|curr, next| {
-                    let a =
-                        curr.iter().filter(|t| (**t).into().is_some()).count();
-                    let b =
-                        next.iter().filter(|t| (**t).into().is_some()).count();
-
-                    a < b
-                });
+                buf.borrow_mut()
+                    .swap_when(|curr, next| curr.len() < next.len());
             }
 
             buf.borrow_mut().clear_both();
