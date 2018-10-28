@@ -1,6 +1,5 @@
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use std::convert::{From, Into};
-use std::iter::Map;
 
 use data::{Block, Coordinate, Direction, Tile};
 use system::{GameOver, Model};

@@ -1,14 +1,8 @@
-use std::cell::{Cell, RefCell};
-use std::collections::VecDeque;
-use std::convert::AsRef;
-use std::iter::{Fuse, IntoIterator, Map, Zip};
-use std::marker::PhantomData;
+use std::cell::RefCell;
+use std::iter::{IntoIterator, Map, Zip};
 use std::rc::Rc;
-use std::slice::Iter;
 
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
-
-use std::ops::{Generator, GeneratorState};
+use std::ops::Generator;
 
 use arraydeque::{ArrayDeque, Wrapping};
 use void::Void;
@@ -263,7 +257,7 @@ where
     E: 'static,
 {
     #[allow(dead_code)]
-    pub fn create<R, Input>(
+    pub fn new_game<R, Input>(
         self: Box<Self>,
     ) -> (
         Rc<RefCell<InputDblBuffer<Input>>>,
@@ -288,17 +282,6 @@ where
             }
 
             loop {
-                /*
-                 * console_log!(
-                 *     "Tick Start Current: {:?}",
-                 *     buf.borrow_mut().current()
-                 * );
-                 * console_log!(
-                 *     "Tick Start Next   : {:?}",
-                 *     buf.borrow_mut().next()
-                 * );
-                 */
-
                 let cmd = buf.borrow_mut().read().and_then(|c| c.into());
                 let update = this.model.step(cmd);
 
@@ -311,10 +294,6 @@ where
                     Err(_) => break,
                 }
 
-                // console_log!("Current: {:?}", buf.borrow_mut().current());
-                // console_log!("Next   : {:?}", buf.borrow_mut().next());
-                // buf.borrow_mut()
-                // .swap_if(|_c, n| n.iter().any(|&t| t.into().is_some()));
                 buf.borrow_mut().swap_if(|curr, next| {
                     let a =
                         curr.iter().filter(|t| (**t).into().is_some()).count();

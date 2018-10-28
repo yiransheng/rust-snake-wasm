@@ -1,5 +1,4 @@
-use std::convert::TryFrom;
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::Range;
 use std::ops::{Generator, GeneratorState};
 
 use data::Direction;
@@ -17,15 +16,26 @@ impl UnitInterval {
     }
 
     pub fn from_u8_and_range(x: u8, range: Range<u8>) -> Self {
-        assert!(range.end > range.start);
+        assert!(range.start != range.end);
 
-        if x < range.start {
+        let start;
+        let end;
+
+        if range.start > range.end {
+            start = range.end;
+            end = range.start;
+        } else {
+            start = range.start;
+            end = range.end;
+        }
+
+        if x < start {
             Self::min_value()
-        } else if x >= range.end {
+        } else if x >= end {
             Self::max_value()
         } else {
-            let a = x - range.start + 1;
-            let b = range.end - range.start;
+            let a = x - start + 1;
+            let b = end - start;
 
             let v = (a as f64) / (b as f64);
 
@@ -36,6 +46,10 @@ impl UnitInterval {
     #[inline(always)]
     pub fn scale(self, v: f64) -> f64 {
         self.0 * v
+    }
+    #[inline(always)]
+    pub fn supplement(self) -> Self {
+        UnitInterval(1.0 - self.0)
     }
 }
 

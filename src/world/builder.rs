@@ -1,9 +1,7 @@
 use rand::{Rng, SeedableRng};
-use std::convert::{From, Into};
-use std::iter::Map;
+use std::convert::From;
 
-use data::{Block, Coordinate, Direction, Tile};
-use system::Model;
+use data::{Block, Coordinate, Direction};
 
 use super::grid::Grid;
 use super::{SnakeIter, SnakeState, World};

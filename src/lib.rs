@@ -1,6 +1,5 @@
 #![feature(
     type_ascription,
-    try_from,
     arbitrary_self_types,
     generators,
     generator_trait
@@ -13,15 +12,10 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 
 extern crate arraydeque;
-extern crate either;
 extern crate rand;
-extern crate smallvec;
 
-use std::cell::{Cell, RefCell};
-use std::ops::{Deref, DerefMut, Generator, GeneratorState};
+use std::ops::Generator;
 use std::panic;
-use std::rc::Rc;
-use std::sync::Mutex;
 
 use rand::rngs::SmallRng;
 use wasm_bindgen::prelude::*;
@@ -29,17 +23,18 @@ use wasm_bindgen::prelude::*;
 #[macro_use]
 mod macros;
 
+mod acceleration;
 mod constants;
-// mod acceleration;
 mod data;
 mod renderers;
 mod system;
 mod world;
 
+use acceleration::{RenderSpeed, VariableFrame};
 use data::{Direction, Key};
 use renderers::{CanvasEnv, WorldUpdateDraw};
-use system::{Game, Model};
-use world::{World, WorldBuilder, WorldUpdate};
+use system::Model;
+use world::{WorldBuilder, WorldUpdate};
 
 #[wasm_bindgen(module = "./game-loop")]
 extern "C" {
@@ -55,42 +50,28 @@ extern "C" {
     fn stop(this: &GameLoop) -> bool;
 }
 
-/*
- * lazy_static! {
- *     static ref GAME: Mutex<Game<World<SmallRng>, Cell<Key>, CanvasEnv>> = {
- *         let world = WorldBuilder::new()
- *             .width(64)
- *             .height(32)
- *             .set_snake(1, 1)
- *             .extend(Direction::East)
- *             .extend(Direction::East)
- *             .extend(Direction::East)
- *             .extend(Direction::East)
- *             .build_with_seed::<SmallRng>([123; 16]);
- *
- *         Mutex::new(world.make_game(Cell::new(Key::from(0)), CanvasEnv::new()))
- *     };
- * }
- *
- */
-
 #[wasm_bindgen]
 pub fn main() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 
+    let facing = Direction::East;
+
     let world = WorldBuilder::new()
-        .width(64)
-        .height(32)
+        .width(96)
+        .height(64)
         .set_snake(1, 1)
-        .extend(Direction::East)
-        .extend(Direction::East)
-        .extend(Direction::East)
-        .extend(Direction::East)
+        .extend(facing)
+        .extend(facing)
+        .extend(facing)
+        .extend(facing)
         .build_with_seed::<SmallRng>([123; 16]);
 
-    let game = world.make_game(CanvasEnv::new());
+    let game = world
+        .zip_with(RenderSpeed::new(facing), VariableFrame::pack)
+        .make_game(CanvasEnv::new());
 
-    let (cmd_buffer, mut generator) = game.create::<WorldUpdateDraw, Key>();
+    let (cmd_buffer, mut generator) =
+        game.new_game::<WorldUpdateDraw<VariableFrame<WorldUpdate>>, Key>();
 
     let each_tick = Closure::wrap(Box::new(move |key: u8| {
         let key = Key::from(key);

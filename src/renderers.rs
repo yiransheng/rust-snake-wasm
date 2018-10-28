@@ -169,15 +169,29 @@ impl IncrRender for WorldUpdateDraw<WorldUpdate> {
     type Patch = WorldUpdate;
 
     fn new_patch(u: WorldUpdate) -> Self {
+        WorldUpdateDraw::new(u, ANIMATION_FRAME_COUNT)
+    }
+    #[inline]
+    fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+        self.render(env)
+    }
+}
+
+impl<U> WorldUpdateDraw<U>
+where
+    U: Into<WorldUpdate>,
+{
+    pub fn new(u: U, total_frame: u8) -> Self {
         WorldUpdateDraw {
-            update: u,
+            update: u.into(),
             current_frame: 0,
-            total_frame: ANIMATION_FRAME_COUNT,
+            total_frame,
             _update_type: PhantomData,
         }
     }
 
-    fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+    #[inline]
+    pub fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
         let next_frame = self.draw_frame(env);
 
         if next_frame >= self.total_frame {
@@ -188,12 +202,6 @@ impl IncrRender for WorldUpdateDraw<WorldUpdate> {
             Some(())
         }
     }
-}
-
-impl<U> WorldUpdateDraw<U>
-where
-    U: Into<WorldUpdate>,
-{
     fn draw_frame<E: DrawGrid>(&self, env: &mut E) -> u8 {
         let t = UnitInterval::from_u8_and_range(
             self.current_frame,
