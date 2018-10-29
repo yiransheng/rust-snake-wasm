@@ -5,10 +5,13 @@ const webpack = require("webpack");
 
 module.exports = {
   mode: "production",
-  entry: "./index.js",
+  entry: { 
+    index: "./index.js",
+    polyfills: "./polyfills.js",
+  },
   output: {
     path: path.resolve(__dirname, "docs"),
-    filename: "index.js"
+    filename: '[name].bundle.js'
   },
   resolve: {
     modules: [__dirname, "node_modules"]
@@ -31,15 +34,18 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       title: "Snake WASM",
+      inject: "body",
       hash: true,
-      template: "index.html"
+      template: "index.html",
+      chunks: ["index"],
     }),
     // Have this example work in Edge which doesn't ship `TextEncoder` or
     // `TextDecoder` at this time.
-    new webpack.ProvidePlugin({
-      TextDecoder: ["text-encoding", "TextDecoder"],
-      TextEncoder: ["text-encoding", "TextEncoder"]
-    })
+    /*
+     * new webpack.ProvidePlugin({
+     *   TextDecoder: ["text-encoding", "TextDecoder"],
+     *   TextEncoder: ["text-encoding", "TextEncoder"]
+     * })
+     */
   ],
-  mode: "development"
 };
