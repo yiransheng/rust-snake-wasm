@@ -30,6 +30,8 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
+      title: "Snake WASM",
+      hash: true,
       template: "index.html"
     }),
     // Have this example work in Edge which doesn't ship `TextEncoder` or
