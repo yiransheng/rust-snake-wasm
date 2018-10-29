@@ -74,7 +74,7 @@ impl SnakeBuilder {
 
         self.next_head = next_head
             .move_towards(dir)
-            .into_coordinate(self.grid.width(), self.grid.height())
+            .bound_inside(self.grid.width(), self.grid.height())
             .unwrap();
 
         self

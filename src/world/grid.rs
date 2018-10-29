@@ -16,7 +16,7 @@ impl Grid {
         Grid {
             width: width as u32,
             height: height as u32,
-            blocks: vec![Block::empty(); (width * height) as usize],
+            blocks: vec![Block::Empty; (width * height) as usize],
         }
     }
 
@@ -38,7 +38,7 @@ impl Grid {
     }
 
     pub(super) fn clear(&mut self) {
-        self.blocks.iter_mut().for_each(|x| *x = Block::empty());
+        self.blocks.iter_mut().for_each(|x| *x = Block::Empty);
     }
 
     #[inline]
@@ -46,7 +46,7 @@ impl Grid {
         if let Some(index) = self.find_index(coord) {
             self.blocks[index]
         } else {
-            Block::out_of_bound()
+            Block::OutOfBound
         }
     }
 
@@ -90,7 +90,7 @@ impl Grid {
 
         let prev_coord = coord
             .move_towards(dir)
-            .into_coordinate(self.width, self.height)?;
+            .bound_inside(self.width, self.height)?;
 
         let prev_block = self.get_block(prev_coord);
 
@@ -108,7 +108,7 @@ impl Grid {
 
         let next_coord = coord
             .move_towards(dir)
-            .into_coordinate(self.width, self.height)?;
+            .bound_inside(self.width, self.height)?;
 
         let next_block = self.get_block(next_coord);
 

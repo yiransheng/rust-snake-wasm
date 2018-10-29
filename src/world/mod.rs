@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use rand::Rng;
 use std::convert::{From, Into};
 
-use data::{Block, Coordinate, Direction, Tile};
+use data::{Block, Coordinate, Direction};
 use system::{GameOver, Model};
 
 pub use self::builder::WorldBuilder;
@@ -25,6 +25,8 @@ pub enum WorldUpdate {
 
 #[derive(Debug, Copy, Clone)]
 pub enum UpdateError {
+    HeadDetached,
+    TailDetached,
     OutOfBound,
     CollideBody,
 }
@@ -38,7 +40,7 @@ impl Into<GameOver> for UpdateError {
 #[derive(Debug, Copy, Clone)]
 enum SnakeState {
     Eaten,
-    Consuming(Tile),
+    Consuming(Block),
 }
 
 pub struct World<R> {
@@ -65,14 +67,28 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
         Initializer::WorldSize(&*self, food_at)
     }
 
-    #[inline(always)]
     fn tear_down(&mut self) {
         self.reset();
     }
 
+    #[inline(always)]
     fn step(&mut self, cmd: Option<Self::Cmd>) -> Result<Option<Self::Update>> {
+        match self.step(cmd) {
+            Ok(r) => Ok(r),
+            Err(err) => match err {
+                UpdateError::HeadDetached | UpdateError::TailDetached => {
+                    unreachable!("Game breaking bug, snake invairant violation")
+                }
+                _ => Err(err),
+            },
+        }
+    }
+}
+
+impl<R: Rng> World<R> {
+    fn step(&mut self, cmd: Option<Direction>) -> Result<Option<WorldUpdate>> {
         if let Some(dir) = cmd {
-            self.set_direction(dir);
+            self.set_direction(dir)?;
         }
 
         match self.state {
@@ -93,17 +109,17 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
             }
         }
     }
-}
-
-impl<R: Rng> World<R> {
-    fn set_direction(&mut self, dir: Direction) {
+    fn set_direction(&mut self, dir: Direction) -> Result<()> {
         let head = self.head;
-        let head_dir: Direction =
-            self.get_block(head).into_direction_unchecked();
+        let head_dir = self
+            .get_block(head)
+            .snake_or_err(UpdateError::HeadDetached)?;
 
         if dir != head_dir.opposite() {
             self.set_block(head, dir);
         }
+
+        Ok(())
     }
 
     fn reset(&mut self) {
@@ -128,67 +144,72 @@ impl<R: Rng> World<R> {
 
     fn motion(&mut self) -> Result<Block> {
         let head_block = self.get_block(self.head);
+        let head_dir = head_block.snake_or_err(UpdateError::HeadDetached)?;
+
         let next_head = self
             .head
-            .move_towards(head_block.into_direction_unchecked())
-            .into_coordinate_wrapping(self.grid.width(), self.grid.height());
+            .move_towards(head_dir)
+            .wrap_inside(self.grid.width(), self.grid.height());
 
         let next_head_block = self.get_block(next_head);
-        let tile: Tile = next_head_block.into();
 
-        match tile {
-            Tile::Empty | Tile::Food => {
+        match next_head_block {
+            Block::Empty | Block::Food => {
                 self.head = next_head;
                 self.set_block(next_head, head_block);
                 Ok(next_head_block)
             }
-            Tile::Snake(_) => Err(UpdateError::CollideBody),
-            Tile::OutOfBound => unreachable!("No bounds in wrapping behavior, a bug")
-            // Tile::OutOfBound => Err(UpdateError::OutOfBound),
+            Block::Snake(_) => Err(UpdateError::CollideBody),
+            Block::OutOfBound => {
+                unreachable!("No bounds in wrapping behavior, a bug")
+            }
         }
     }
 
-    fn digest(&mut self, tile: Tile) -> Result<WorldUpdate> {
+    fn digest(&mut self, tile: Block) -> Result<WorldUpdate> {
         match tile {
-            Tile::Empty => {
+            Block::Empty => {
                 let tail = self.tail;
                 let tail_block = self.get_block(tail);
+
+                let tail_dir =
+                    tail_block.snake_or_err(UpdateError::TailDetached)?;
+
                 let next_tail = tail
-                    .move_towards(tail_block.into_direction_unchecked())
-                    .into_coordinate_wrapping(
-                        self.grid.width(),
-                        self.grid.height(),
-                    );
+                    .move_towards(tail_dir)
+                    .wrap_inside(self.grid.width(), self.grid.height());
 
                 self.tail = next_tail;
 
-                self.set_block(tail, Block::empty());
+                self.set_block(tail, Block::Empty);
 
                 Ok(WorldUpdate::Clear {
                     prev_block: tail_block,
                     at: tail,
                 })
             }
-            Tile::Food => {
+            Block::Food => {
                 let coord = self.spawn_food();
 
                 Ok(WorldUpdate::SetBlock {
-                    block: Block::food(),
+                    block: Block::Food,
                     at: coord,
                 })
             }
-            Tile::Snake(_) => Err(UpdateError::CollideBody),
-            Tile::OutOfBound => Err(UpdateError::OutOfBound),
+            Block::Snake(_) => Err(UpdateError::CollideBody),
+            Block::OutOfBound => {
+                unreachable!("No bounds in wrapping behavior, a bug")
+            }
         }
     }
 
     fn spawn_food(&mut self) -> Coordinate {
         loop {
             let coord = self.grid.random_coordinate(&mut self.rng);
-            let current_tile: Tile = Tile::from(self.grid.get_block(coord));
+            let current_block = self.get_block(coord);
 
-            if current_tile == Tile::Empty {
-                self.set_block(coord, Block::food());
+            if current_block == Block::Empty {
+                self.set_block(coord, Block::Food);
                 return coord;
             }
         }
@@ -227,10 +248,10 @@ impl<'a> Iterator for SnakeIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let block = self.grid.get_block(self.at);
 
-        match block.into() {
+        match block.snake() {
             Some(dir) => {
                 let current = self.at;
-                let next = current.move_towards(dir).unwrap_unchecked();
+                let next = current.move_towards(dir).unwrap();
 
                 self.at = next;
 
@@ -266,7 +287,7 @@ impl<'a, R: Rng> Iterator for Initializer<'a, R> {
                 *self = Initializer::SnakeIter(world.iter_snake());
 
                 Some(WorldUpdate::SetBlock {
-                    block: Block::food(),
+                    block: Block::Food,
                     at,
                 })
             }
