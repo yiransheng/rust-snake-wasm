@@ -18,10 +18,10 @@ impl Key {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Direction {
-    North = 0b1000_0000,
-    South = 0b1000_0001,
-    East = 0b1000_0010,
-    West = 0b1000_0011,
+    North,
+    South,
+    East,
+    West,
 }
 
 impl Direction {
@@ -194,32 +194,13 @@ impl From<Direction> for Block {
     }
 }
 
-/*
- * #[cfg(test)]
- * mod tests {
- *     use super::*;
- *
- *     #[test]
- *     fn test_converion_safety() {
- *         for x in 0..=u8::max_value() {
- *             // make sure every u8 bit pattern result in a valid Direction
- *             // ...that is, not getting SIGIL or something
- *             let b = unsafe { Block::from_raw(x) };
- *             let tile = Tile::from(b);
- *
- *             if b.is_snake() {
- *                 assert_eq!(tile, Tile::Snake(()));
- *             }
- *
- *             let dir = b.into_direction_unchecked();
- *
- *             assert!(
- *                 dir == Direction::North
- *                     || dir == Direction::South
- *                     || dir == Direction::East
- *                     || dir == Direction::West
- *             );
- *         }
- *     }
- * }
- */
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_block_size() {
+        // nested enum optimization kicking in
+        assert_eq!(::std::mem::size_of::<Block>(), 1,)
+    }
+}
