@@ -120,7 +120,7 @@ export class GameLoop {
   _keybox: Keybox;
 
   _onEnterFrame: Function;
-  _rafId: ?number;
+  _rafId: ?AnimationFrameID;
   _key: number;
   _isTap: boolean;
   _unlistens: Array<Unlisten<KeyboardEvent> | Unlisten<KeyCode>>;
