@@ -1,24 +1,4 @@
 use std::convert::{From, Into};
-use std::mem::transmute;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Direction {
-    North = 0b1000_0000,
-    South = 0b1000_0001,
-    East = 0b1000_0010,
-    West = 0b1000_0011,
-}
-
-impl Direction {
-    pub fn opposite(self) -> Self {
-        match self {
-            Direction::North => Direction::South,
-            Direction::South => Direction::North,
-            Direction::East => Direction::West,
-            Direction::West => Direction::East,
-        }
-    }
-}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Key {
@@ -37,73 +17,85 @@ impl Key {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Tile<S = ()> {
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+impl Direction {
+    pub fn opposite(self) -> Self {
+        match self {
+            Direction::North => Direction::South,
+            Direction::South => Direction::North,
+            Direction::East => Direction::West,
+            Direction::West => Direction::East,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Block<T = Direction> {
     Empty,
-    Snake(S),
+    Snake(T),
     Food,
     OutOfBound,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Block {
-    raw: u8,
+impl<T> Block<T> {
+    pub fn is_empty(self) -> bool {
+        match self {
+            Block::Empty => true,
+            _ => false,
+        }
+    }
+    pub fn is_snake(self) -> bool {
+        match self {
+            Block::Snake(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn snake(self) -> Option<T> {
+        match self {
+            Block::Snake(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn snake_or_err<E>(self, err: E) -> Result<T, E> {
+        match self {
+            Block::Snake(s) => Ok(s),
+            _ => Err(err),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn map_snake<U, F>(self, f: F) -> Block<U>
+    where
+        F: Fn(T) -> U,
+    {
+        match self {
+            Block::Snake(x) => Block::Snake(f(x)),
+            Block::Empty => Block::Empty,
+            Block::Food => Block::Food,
+            Block::OutOfBound => Block::OutOfBound,
+        }
+    }
 }
 
-impl Block {
-    #[inline]
-    #[allow(dead_code)]
-    pub unsafe fn from_raw(raw: u8) -> Self {
-        Block { raw }
-    }
-    #[inline]
-    pub fn empty() -> Self {
-        Block { raw: 0 }
-    }
-    #[inline]
-    pub fn food() -> Self {
-        // second bit on: food
-        Block { raw: 0b0100_0000 }
-    }
-    #[inline]
-    pub fn out_of_bound() -> Self {
-        // first two bits off: OOB
-        Block { raw: 0b0011_1111 }
-    }
-    #[inline]
-    #[allow(dead_code)]
-    pub fn into_raw(self) -> u8 {
-        self.raw
-    }
-    #[inline]
-    pub fn is_empty(self) -> bool {
-        self.raw == 0
-    }
-    #[inline]
-    #[allow(dead_code)]
-    pub fn is_food(self) -> bool {
-        // second bit is 1
-        self.raw & 0b0100_0000 != 0
-    }
-    #[inline]
-    pub fn is_snake(self) -> bool {
-        // first bit is 1
-        self.raw & 0b1000_0000 != 0
-    }
-    // this is memory safe but calling it in wrong place
-    // may result in logic errors
-    #[inline]
-    pub fn into_direction_unchecked(self) -> Direction {
-        // keep only lower 2 bits, then turn on first bit
-        let bits = self.raw & 0b0000_0011 | 0b1000_0000;
-        unsafe { transmute(bits) }
-    }
-
-    #[inline]
+impl Block<Direction> {
     pub fn into_direction(self) -> Option<Direction> {
-        if self.is_snake() {
-            Some(self.into_direction_unchecked())
-        } else {
-            None
+        match self {
+            Block::Snake(dir) => Some(dir),
+            _ => None,
+        }
+    }
+    pub fn into_direction_unchecked(self) -> Direction {
+        match self {
+            Block::Snake(dir) => dir,
+            _ => panic!(),
         }
     }
 }
@@ -140,12 +132,11 @@ impl UncheckedCoordinate {
         }
     }
 
-    #[inline(always)]
-    pub fn unwrap_unchecked(self) -> Coordinate {
+    pub fn unwrap(self) -> Coordinate {
         self.inner
     }
 
-    pub fn into_coordinate(
+    pub fn bound_inside(
         self,
         bound_width: u32,
         bound_height: u32,
@@ -157,7 +148,7 @@ impl UncheckedCoordinate {
         }
     }
 
-    pub fn into_coordinate_wrapping(
+    pub fn wrap_inside(
         self,
         bound_width: u32,
         bound_height: u32,
@@ -172,42 +163,6 @@ impl UncheckedCoordinate {
 }
 
 // conversions
-
-impl From<Block> for Tile {
-    fn from(b: Block) -> Tile {
-        match b.raw {
-            0 => Tile::Empty,
-            b if (b & 0b1000_0000) != 0 => Tile::Snake(()),
-            b if (b & 0b0100_0000) != 0 => Tile::Food,
-            _ => Tile::OutOfBound,
-        }
-    }
-}
-impl From<Block> for Tile<Direction> {
-    fn from(block: Block) -> Tile<Direction> {
-        match block.raw {
-            0 => Tile::Empty,
-            b if (b & 0b1000_0000) != 0 => {
-                Tile::Snake(block.into_direction_unchecked())
-            }
-            b if (b & 0b0100_0000) != 0 => Tile::Food,
-            _ => Tile::OutOfBound,
-        }
-    }
-}
-
-impl From<Direction> for Block {
-    fn from(dir: Direction) -> Self {
-        Block { raw: (dir as u8) }
-    }
-}
-
-impl Into<Option<Direction>> for Block {
-    #[inline]
-    fn into(self) -> Option<Direction> {
-        self.into_direction()
-    }
-}
 
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
@@ -233,30 +188,19 @@ impl From<Key> for Option<Direction> {
     }
 }
 
+impl From<Direction> for Block {
+    fn from(dir: Direction) -> Block {
+        Block::Snake(dir)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_converion_safety() {
-        for x in 0..=u8::max_value() {
-            // make sure every u8 bit pattern result in a valid Direction
-            // ...that is, not getting SIGIL or something
-            let b = unsafe { Block::from_raw(x) };
-            let tile = Tile::from(b);
-
-            if b.is_snake() {
-                assert_eq!(tile, Tile::Snake(()));
-            }
-
-            let dir = b.into_direction_unchecked();
-
-            assert!(
-                dir == Direction::North
-                    || dir == Direction::South
-                    || dir == Direction::East
-                    || dir == Direction::West
-            );
-        }
+    fn test_block_size() {
+        // nested enum optimization kicking in
+        assert_eq!(::std::mem::size_of::<Block>(), 1,)
     }
 }

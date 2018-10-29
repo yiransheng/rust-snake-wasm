@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
-use data::{Direction, Tile};
+use data::{Block, Direction};
 use system::{Color, DrawGrid, IncrRender, UnitInterval};
 use world::WorldUpdate;
 
@@ -251,8 +251,8 @@ where
                 self.total_frame
             }
             WorldUpdate::Clear { prev_block, at } => {
-                match Tile::from(prev_block) {
-                    Tile::Snake(dir) => env.clear_tile(at.x, at.y, dir, t),
+                match prev_block {
+                    Block::Snake(dir) => env.clear_tile(at.x, at.y, dir, t),
                     _ => env.clear_tile(
                         at.x,
                         at.y,
@@ -263,11 +263,11 @@ where
                 self.current_frame + 1
             }
             WorldUpdate::SetBlock { block, at } => {
-                match Tile::from(block) {
-                    Tile::Food => env.with_fill_color(Color::Red, |env| {
+                match block {
+                    Block::Food => env.with_fill_color(Color::Red, |env| {
                         env.circle(at.x, at.y, t);
                     }),
-                    Tile::Snake(dir) => env.fill_tile(at.x, at.y, dir, t),
+                    Block::Snake(dir) => env.fill_tile(at.x, at.y, dir, t),
                     _ => {}
                 }
                 self.current_frame + 1

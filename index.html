@@ -2,6 +2,14 @@
   <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
     <style> canvas { border: 2px solid #f6d3d4; }</style>
+    <script>
+       if (!window.TextEncoder || !window.TextDecoder) {
+         var scriptElement = document.createElement('script');
+         scriptElement.async = false;
+         scriptElement.src = '/polyfills.bundle.js';
+         document.head.appendChild(scriptElement);
+       }
+    </script>
   </head>
   <body>
   <div class="keybox">
