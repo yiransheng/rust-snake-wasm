@@ -39,17 +39,17 @@ use wasm_bindgen::prelude::*;
 mod macros;
 
 mod acceleration;
+mod canvas;
 mod constants;
 mod data;
 mod dead;
-mod renderers;
 mod system;
 mod world;
 
 use acceleration::{RenderSpeed, VariableFrame};
+use canvas::{CanvasEnv, WorldUpdateDraw};
 use data::{Direction, Key};
 use dead::Dead;
-use renderers::{CanvasEnv, WorldUpdateDraw};
 use system::Model;
 use world::{WorldBuilder, WorldUpdate};
 
