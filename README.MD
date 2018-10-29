@@ -13,4 +13,3 @@ A snake game writing (mostly) in rust, using js for rendering (canvas).
 * Unfortunately could not get rand crate to work in wasm, so did random food generation on js side
 * State is split across js/rust, rust maintains game state with `'static mut` variable
 * Mostly a learning exercise, not optimized much, but performs reasonably well (no problem running at 60fps, although slowed it down by a factor of 4 to make game playable)
-
