@@ -28,6 +28,10 @@ extern crate wee_alloc;
 extern crate arraydeque;
 extern crate rand;
 
+#[macro_use]
+#[cfg(test)]
+extern crate quickcheck;
+
 use alloc::boxed::Box;
 
 use std::ops::Generator;
