@@ -18,6 +18,8 @@ arraydeque = "0.4.3"
 derive_deref = "1.0"
 console_error_panic_hook = "0.1"
 quickcheck = "0.7.1"
+morton = "0.2.0"
+num-traits = "0.2.6"
 
 [dependencies.web-sys]
 features = [

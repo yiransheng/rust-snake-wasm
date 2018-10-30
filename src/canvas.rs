@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 use std::marker::PhantomData;
 
+use num_traits::{ToPrimitive, Unsigned};
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -47,26 +48,31 @@ impl CanvasEnv {
 }
 
 impl DrawGrid for CanvasEnv {
-    fn setup(&mut self, tile_size: u32, width: u32, height: u32) {
-        self.tile_size = tile_size as f64;
-        self.canvas.set_width(width * tile_size);
-        self.canvas.set_height(height * tile_size);
+    fn setup<T: ToPrimitive + Unsigned>(
+        &mut self,
+        tile_size: T,
+        width: T,
+        height: T,
+    ) {
+        self.tile_size = as_f64!(tile_size);
+        self.canvas.set_width(as_u32!(width * tile_size));
+        self.canvas.set_height(as_u32!(height * tile_size));
 
-        let width_pixel = (width * tile_size) as f64;
-        let height_pixel = (height * tile_size) as f64;
+        let width_pixel = as_f64!(width * tile_size);
+        let height_pixel = as_f64!(height * tile_size);
 
         self.gc.set_stroke_style(&"rgba(0, 0, 0, 0.02)".into());
 
-        for x in 1..width {
-            let x = (x * tile_size) as f64;
+        for x in 1..as_u32!(width) {
+            let x = as_f64!(x * tile_size);
             self.gc.begin_path();
             self.gc.move_to(x, 0.0);
             self.gc.line_to(x, height_pixel);
             self.gc.stroke();
         }
 
-        for y in 1..height {
-            let y = (y * tile_size) as f64;
+        for y in 1..as_u32!(height) {
+            let y = as_f64!(y * tile_size);
             self.gc.begin_path();
             self.gc.move_to(0.0, y);
             self.gc.line_to(width_pixel, y);
@@ -92,10 +98,10 @@ impl DrawGrid for CanvasEnv {
     }
 
     #[inline(always)]
-    fn fill_tile(
+    fn fill_tile<T: ToPrimitive + Unsigned>(
         &mut self,
-        x: u32,
-        y: u32,
+        x: T,
+        y: T,
         dir: Direction,
         size: UnitInterval,
     ) {
@@ -105,10 +111,10 @@ impl DrawGrid for CanvasEnv {
     }
 
     #[inline(always)]
-    fn clear_tile(
+    fn clear_tile<T: ToPrimitive + Unsigned>(
         &mut self,
-        x: u32,
-        y: u32,
+        x: T,
+        y: T,
         dir: Direction,
         size: UnitInterval,
     ) {
@@ -118,9 +124,14 @@ impl DrawGrid for CanvasEnv {
         self.gc.stroke_rect(x, y, self.tile_size, self.tile_size);
     }
 
-    fn circle(&mut self, x: u32, y: u32, radius: UnitInterval) {
-        let x = f64::from(x) * self.tile_size;
-        let y = f64::from(y) * self.tile_size;
+    fn circle<T: ToPrimitive + Unsigned>(
+        &mut self,
+        x: T,
+        y: T,
+        radius: UnitInterval,
+    ) {
+        let x = as_f64!(x) * self.tile_size;
+        let y = as_f64!(y) * self.tile_size;
 
         let r_full = self.tile_size / 2.0;
         let r = radius.scale(r_full);
@@ -145,15 +156,15 @@ impl DrawGrid for CanvasEnv {
 }
 
 impl CanvasEnv {
-    fn partial_tile(
+    fn partial_tile<T: ToPrimitive + Unsigned>(
         &mut self,
-        x: u32,
-        y: u32,
+        x: T,
+        y: T,
         dir: Direction,
         size: UnitInterval,
     ) -> (f64, f64, f64, f64) {
-        let x0 = f64::from(x) * self.tile_size;
-        let y0 = f64::from(y) * self.tile_size;
+        let x0 = as_f64!(x) * self.tile_size;
+        let y0 = as_f64!(y) * self.tile_size;
 
         let long = self.tile_size;
         let short = size.scale(self.tile_size);
