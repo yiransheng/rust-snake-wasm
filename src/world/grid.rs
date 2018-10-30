@@ -1,31 +1,31 @@
 use alloc::vec::Vec;
 
-use data::{Block, Coordinate};
+use data::{Block, Coordinate, Natnum};
 use rand::Rng;
 
 pub struct Grid {
     blocks: Vec<Block>,
-    width: u32,
-    height: u32,
+    width: Natnum,
+    height: Natnum,
 }
 
 // Storage of game data
 
 impl Grid {
-    pub(super) fn empty(width: u32, height: u32) -> Self {
+    pub(super) fn empty(width: Natnum, height: Natnum) -> Self {
         Grid {
-            width: width as u32,
-            height: height as u32,
+            width: width as Natnum,
+            height: height as Natnum,
             blocks: vec![Block::Empty; (width * height) as usize],
         }
     }
 
     #[inline(always)]
-    pub(super) fn width(&self) -> u32 {
+    pub(super) fn width(&self) -> Natnum {
         self.width
     }
     #[inline(always)]
-    pub(super) fn height(&self) -> u32 {
+    pub(super) fn height(&self) -> Natnum {
         self.height
     }
 

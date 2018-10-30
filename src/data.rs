@@ -85,14 +85,16 @@ impl<T> Block<T> {
     }
 }
 
+pub type Natnum = u16;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Coordinate {
-    pub x: u32,
-    pub y: u32,
+    pub x: u16,
+    pub y: u16,
 }
 
 impl Coordinate {
-    pub fn new_unchecked(x: u32, y: u32) -> Self {
+    pub fn new_unchecked(x: Natnum, y: Natnum) -> Self {
         Coordinate { x, y }
     }
     pub fn move_towards(self, dir: Direction) -> UncheckedCoordinate {
@@ -112,7 +114,7 @@ pub struct UncheckedCoordinate {
 }
 impl UncheckedCoordinate {
     #[inline(always)]
-    fn new(x: u32, y: u32) -> Self {
+    fn new(x: Natnum, y: Natnum) -> Self {
         UncheckedCoordinate {
             inner: Coordinate { x, y },
         }
@@ -124,8 +126,8 @@ impl UncheckedCoordinate {
 
     pub fn bound_inside(
         self,
-        bound_width: u32,
-        bound_height: u32,
+        bound_width: Natnum,
+        bound_height: Natnum,
     ) -> Option<Coordinate> {
         if self.inner.x < bound_width && self.inner.y < bound_height {
             Some(self.inner)
@@ -136,8 +138,8 @@ impl UncheckedCoordinate {
 
     pub fn wrap_inside(
         self,
-        bound_width: u32,
-        bound_height: u32,
+        bound_width: Natnum,
+        bound_height: Natnum,
     ) -> Coordinate {
         debug_assert!(bound_width > 0 && bound_height > 0);
 
@@ -189,14 +191,14 @@ mod tests {
 
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     struct Bound {
-        width: u32,
-        height: u32,
+        width: u16,
+        height: u16,
     }
 
     impl Arbitrary for Bound {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let w = u32::arbitrary(g);
-            let h = u32::arbitrary(g);
+            let w = u16::arbitrary(g);
+            let h = u16::arbitrary(g);
 
             Bound {
                 width: if w > 0 { w } else { 1 },
@@ -219,8 +221,8 @@ mod tests {
     impl Arbitrary for Coordinate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Coordinate {
-                x: u32::arbitrary(g),
-                y: u32::arbitrary(g),
+                x: u16::arbitrary(g),
+                y: u16::arbitrary(g),
             }
         }
     }

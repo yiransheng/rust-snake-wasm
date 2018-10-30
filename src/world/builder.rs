@@ -3,15 +3,15 @@ use std::convert::From;
 
 use rand::{Rng, SeedableRng};
 
-use data::{Block, Coordinate, Direction};
+use data::{Block, Coordinate, Direction, Natnum};
 
 use super::grid::Grid;
 use super::{SnakeIter, SnakeState, World};
 
 #[derive(Copy, Clone)]
 pub struct WorldBuilder {
-    width: u32,
-    height: u32,
+    width: Natnum,
+    height: Natnum,
 }
 
 impl WorldBuilder {
@@ -21,15 +21,15 @@ impl WorldBuilder {
             height: 10,
         }
     }
-    pub fn width<'a>(&'a mut self, width: u32) -> &'a mut Self {
+    pub fn width<'a>(&'a mut self, width: Natnum) -> &'a mut Self {
         self.width = width;
         self
     }
-    pub fn height(&mut self, height: u32) -> &mut Self {
+    pub fn height(&mut self, height: Natnum) -> &mut Self {
         self.height = height;
         self
     }
-    pub fn set_snake(self, x: u32, y: u32) -> SnakeBuilder {
+    pub fn set_snake(self, x: Natnum, y: Natnum) -> SnakeBuilder {
         assert!(x < self.width && y < self.height);
 
         let grid = Grid::empty(self.width, self.height);

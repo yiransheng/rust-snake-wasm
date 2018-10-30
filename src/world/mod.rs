@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use rand::Rng;
 
-use data::{Block, Coordinate, Direction};
+use data::{Block, Coordinate, Direction, Natnum};
 use system::{GameOver, Model};
 
 pub use self::builder::WorldBuilder;
@@ -18,7 +18,7 @@ type Result<T> = ::std::result::Result<T, UpdateError>;
 pub enum WorldUpdate {
     SetBlock { block: Block, at: Coordinate },
     Clear { prev_block: Block, at: Coordinate },
-    SetWorldSize(u32, u32),
+    SetWorldSize(Natnum, Natnum),
     Dead,
 }
 
