@@ -85,21 +85,6 @@ impl<T> Block<T> {
     }
 }
 
-impl Block<Direction> {
-    pub fn into_direction(self) -> Option<Direction> {
-        match self {
-            Block::Snake(dir) => Some(dir),
-            _ => None,
-        }
-    }
-    pub fn into_direction_unchecked(self) -> Direction {
-        match self {
-            Block::Snake(dir) => dir,
-            _ => panic!(),
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Coordinate {
     pub x: u32,
