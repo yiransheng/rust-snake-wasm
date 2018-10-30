@@ -207,7 +207,7 @@ mod tests {
 
     impl Arbitrary for Direction {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match (g.size() % 4) {
+            match g.size() % 4 {
                 0 => Direction::East,
                 1 => Direction::West,
                 2 => Direction::South,
@@ -281,6 +281,5 @@ mod tests {
                 true
             }
         }
-
     }
 }

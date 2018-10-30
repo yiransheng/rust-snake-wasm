@@ -1,6 +1,5 @@
 use alloc::vec::Vec;
 use rand::Rng;
-use std::convert::{From, Into};
 
 use data::{Block, Coordinate, Direction};
 use system::{GameOver, Model};

@@ -30,9 +30,8 @@ impl Grid {
     }
 
     pub(super) fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
-        // don't put the damn thing on edge
-        let x = rng.gen_range(1, self.width - 1);
-        let y = rng.gen_range(1, self.height - 1);
+        let x = rng.gen_range(0, self.width);
+        let y = rng.gen_range(0, self.height);
 
         Coordinate { x, y }
     }
@@ -83,39 +82,29 @@ impl Grid {
     }
 
     #[cfg(test)]
-    fn get_prev_snake_block(&self, coord: Coordinate) -> Option<Block> {
+    fn get_prev_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
+
         let dir = b.snake()?;
         let dir = dir.opposite();
 
-        let prev_coord = coord
-            .move_towards(dir)
-            .bound_inside(self.width, self.height)?;
+        let prev_coord =
+            coord.move_towards(dir).wrap_inside(self.width, self.height);
 
         let prev_block = self.get_block(prev_coord);
 
-        if prev_block.is_snake() {
-            Some(prev_block)
-        } else {
-            None
-        }
+        Some(prev_block)
     }
     #[cfg(test)]
-    fn get_next_snake_block(&self, coord: Coordinate) -> Option<Block> {
+    fn get_next_block(&self, coord: Coordinate) -> Option<Block> {
         let b = self.get_block(coord);
 
         let dir = b.snake()?;
-
-        let next_coord = coord
-            .move_towards(dir)
-            .bound_inside(self.width, self.height)?;
+        let next_coord =
+            coord.move_towards(dir).wrap_inside(self.width, self.height);
 
         let next_block = self.get_block(next_coord);
 
-        if next_block.is_snake() {
-            Some(next_block)
-        } else {
-            None
-        }
+        Some(next_block)
     }
 }
