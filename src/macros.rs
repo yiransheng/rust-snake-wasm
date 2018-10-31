@@ -20,29 +20,3 @@ macro_rules! yield_from {
         }
     }};
 }
-
-#[macro_export]
-macro_rules! as_f64 {
-    ($x:ident) => {
-        $x.to_f64().unwrap()
-    };
-    ($x:ident + $t:tt) => {
-        $x.to_f64().unwrap() + as_f64!($t)
-    };
-    ($x:ident * $t:tt) => {
-        $x.to_f64().unwrap() * as_f64!($t)
-    };
-}
-
-#[macro_export]
-macro_rules! as_u32 {
-    ($x:ident) => {
-        $x.to_u32().unwrap()
-    };
-    ($x:ident + $t:tt) => {
-        $x.to_u32().unwrap() + as_u32!($t)
-    };
-    ($x:ident * $t:tt) => {
-        $x.to_u32().unwrap() * as_u32!($t)
-    };
-}

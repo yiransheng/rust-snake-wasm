@@ -57,12 +57,6 @@ impl<T> Block<T> {
             _ => false,
         }
     }
-    pub fn is_snake(self) -> bool {
-        match self {
-            Block::Snake(_) => true,
-            _ => false,
-        }
-    }
 
     pub fn snake(self) -> Option<T> {
         match self {
@@ -77,19 +71,6 @@ impl<T> Block<T> {
             _ => Err(err),
         }
     }
-
-    #[allow(dead_code)]
-    pub fn map_snake<U, F>(self, f: F) -> Block<U>
-    where
-        F: Fn(T) -> U,
-    {
-        match self {
-            Block::Snake(x) => Block::Snake(f(x)),
-            Block::Empty => Block::Empty,
-            Block::Food => Block::Food,
-            Block::OutOfBound => Block::OutOfBound,
-        }
-    }
 }
 
 pub type Natnum = u16;
@@ -101,9 +82,6 @@ pub struct Coordinate {
 }
 
 impl Coordinate {
-    pub fn new_unchecked(x: Natnum, y: Natnum) -> Self {
-        Coordinate { x, y }
-    }
     pub fn move_towards(self, dir: Direction) -> UncheckedCoordinate {
         let Coordinate { x, y } = self;
         match dir {
@@ -145,10 +123,6 @@ impl UncheckedCoordinate {
         UncheckedCoordinate {
             inner: Coordinate { x, y },
         }
-    }
-
-    pub fn unwrap(self) -> Coordinate {
-        self.inner
     }
 
     pub fn bound_inside(
@@ -226,13 +200,6 @@ impl Grid {
         let y = rng.gen_range(0, self.height);
 
         Coordinate { x, y }
-    }
-
-    pub fn iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (Coordinate, Block)> + 'a {
-        self.iter_coordinates()
-            .map(move |coord| (coord, self[coord]))
     }
 
     pub fn clear(&mut self) {

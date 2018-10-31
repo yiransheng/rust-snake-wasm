@@ -118,26 +118,6 @@ impl<R: Rng> World<R> {
         Ok(())
     }
 
-    fn reset(&mut self) {
-        self.grid.clear();
-
-        let initial_snake =
-            ::std::mem::replace(&mut self.initial_snake, Vec::new());
-        let n = initial_snake.len();
-
-        for (i, (at, dir)) in initial_snake.iter().enumerate() {
-            if i == 0 {
-                self.tail = *at;
-            }
-            if i == n - 1 {
-                self.head = *at;
-            }
-            self.set_block(*at, *dir);
-        }
-
-        self.initial_snake = initial_snake;
-    }
-
     fn motion(&mut self) -> Result<Block> {
         let head_block = self.get_block(self.head);
         let head_dir = head_block.snake_or_err(UpdateError::HeadDetached)?;
@@ -211,6 +191,26 @@ impl<R: Rng> World<R> {
         }
     }
 
+    fn reset(&mut self) {
+        self.grid.clear();
+
+        let initial_snake =
+            ::std::mem::replace(&mut self.initial_snake, Vec::new());
+        let n = initial_snake.len();
+
+        for (i, (at, dir)) in initial_snake.iter().enumerate() {
+            if i == 0 {
+                self.tail = *at;
+            }
+            if i == n - 1 {
+                self.head = *at;
+            }
+            self.set_block(*at, *dir);
+        }
+
+        self.initial_snake = initial_snake;
+    }
+
     #[inline(always)]
     fn get_block(&self, coord: Coordinate) -> Block {
         self.grid[coord]
@@ -247,7 +247,9 @@ impl<'a> Iterator for SnakeIter<'a> {
         match block.snake() {
             Some(dir) => {
                 let current = self.at;
-                let next = current.move_towards(dir).unwrap();
+                let next = current
+                    .move_towards(dir)
+                    .wrap_inside(self.grid.width(), self.grid.height());
 
                 self.at = next;
 

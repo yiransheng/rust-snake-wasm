@@ -32,7 +32,7 @@ impl WorldBuilder {
         assert!(x < self.width && y < self.height);
 
         let grid = Grid::empty(self.width, self.height);
-        let tail = Coordinate::new_unchecked(x, y);
+        let tail = Coordinate { x, y };
 
         SnakeBuilder {
             grid,
