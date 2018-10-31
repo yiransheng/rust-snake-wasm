@@ -1,4 +1,4 @@
-use num_traits::{AsPrimitive, Unsigned};
+use data::Natnum;
 
 use std::ops::Range;
 use std::ops::{Generator, GeneratorState};
@@ -80,37 +80,27 @@ impl Color {
 }
 
 pub trait DrawGrid {
-    fn setup<T: AsPrimitive<u32> + Unsigned>(
-        &mut self,
-        tile_size: T,
-        width: T,
-        height: T,
-    );
+    fn setup(&mut self, tile_size: Natnum, width: Natnum, height: Natnum);
 
     fn clear(&mut self);
 
     // returns current fill color
     fn set_fill_color(&mut self, color: Color) -> Color;
 
-    fn circle<T: AsPrimitive<f64> + Unsigned>(
-        &mut self,
-        x: T,
-        y: T,
-        radius: UnitInterval,
-    );
+    fn circle(&mut self, x: Natnum, y: Natnum, radius: UnitInterval);
 
-    fn fill_tile<T: AsPrimitive<f64> + Unsigned>(
+    fn fill_tile(
         &mut self,
-        x: T,
-        y: T,
+        x: Natnum,
+        y: Natnum,
         dir: Direction,
         size: UnitInterval,
     );
 
-    fn clear_tile<T: AsPrimitive<f64> + Unsigned>(
+    fn clear_tile(
         &mut self,
-        x: T,
-        y: T,
+        x: Natnum,
+        y: Natnum,
         dir: Direction,
         size: UnitInterval,
     );
