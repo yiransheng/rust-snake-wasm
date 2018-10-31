@@ -437,5 +437,14 @@ mod tests {
 
             valid_count == (grid.width * grid.height) as usize
         }
+
+        fn build_grid_with_correct_indexing(coords: Vec<Coordinate>) -> bool {
+            let grid: Grid = coords
+                .iter()
+                .map(|c| (*c, Block::Food))
+                .collect();
+
+            coords.into_iter().all(|coord| grid[coord] == Block::Food)
+        }
     }
 }
