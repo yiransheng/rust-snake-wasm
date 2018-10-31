@@ -276,11 +276,11 @@ impl FromIterator<(Coordinate, Block)> for Grid {
 
             let index = Coordinate { x: x_max, y: y_max }.encode_usize();
 
-            for _ in blocks.len()..index {
+            for _ in blocks.len()..=index {
                 blocks.push(Block::Empty);
             }
 
-            blocks.push(block);
+            blocks[coord.encode_usize()] = block;
         }
 
         let width = x_max + 1;
