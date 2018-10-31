@@ -3,9 +3,8 @@ use std::convert::From;
 
 use rand::{Rng, SeedableRng};
 
-use data::{Block, Coordinate, Direction, Natnum};
+use data::{Block, Coordinate, Direction, Grid, Natnum};
 
-use super::grid::Grid;
 use super::{SnakeIter, SnakeState, World};
 
 #[derive(Copy, Clone)]

@@ -1,7 +1,11 @@
+use alloc::vec::Vec;
 use std::cmp::Ordering;
 use std::convert::{From, Into};
+use std::iter::FromIterator;
+use std::ops::{Index, IndexMut};
 
 use morton::interleave_morton;
+use rand::Rng;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Key {
@@ -171,7 +175,76 @@ impl UncheckedCoordinate {
     }
 }
 
-// conversions
+pub struct Grid {
+    blocks: Vec<Block>,
+    width: Natnum,
+    height: Natnum,
+}
+
+impl Grid {
+    pub fn empty(width: Natnum, height: Natnum) -> Self {
+        debug_assert!(width > 0 && height > 0);
+
+        let max_coord = Coordinate {
+            x: width - 1,
+            y: height - 1,
+        };
+        let size_requirement = max_coord.as_usize() + 1;
+
+        let mut blocks = vec![Block::OutOfBound; size_requirement];
+
+        for x in 0..width {
+            for y in 0..height {
+                let index = Coordinate { x, y }.as_usize();
+                blocks[index] = Block::Empty;
+            }
+        }
+
+        Grid {
+            width: width,
+            height: height,
+            blocks,
+        }
+    }
+
+    #[inline(always)]
+    pub fn width(&self) -> Natnum {
+        self.width
+    }
+    #[inline(always)]
+    pub fn height(&self) -> Natnum {
+        self.height
+    }
+
+    pub fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
+        let x = rng.gen_range(0, self.width);
+        let y = rng.gen_range(0, self.height);
+
+        Coordinate { x, y }
+    }
+
+    pub fn iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (Coordinate, Block)> + 'a {
+        self.iter_coordinates()
+            .map(move |coord| (coord, self[coord]))
+    }
+
+    pub fn clear(&mut self) {
+        self.iter_coordinates().for_each(|coord| {
+            self[coord] = Block::Empty;
+        });
+    }
+}
+
+impl Grid {
+    fn iter_coordinates(&self) -> impl Iterator<Item = Coordinate> {
+        iproduct!(0..self.width, 0..self.height)
+            .map(|(x, y)| Coordinate { x, y })
+    }
+}
+
+// traits implements
 
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
@@ -200,6 +273,29 @@ impl From<Key> for Option<Direction> {
 impl From<Direction> for Block {
     fn from(dir: Direction) -> Block {
         Block::Snake(dir)
+    }
+}
+
+impl Index<Coordinate> for Grid {
+    type Output = Block;
+
+    fn index<'a>(&'a self, index: Coordinate) -> &'a Block {
+        if index.x < self.width && index.y < self.height {
+            let index_1d = interleave_morton(index.x, index.y) as usize;
+            &self.blocks[index_1d]
+        } else {
+            &Block::OutOfBound
+        }
+    }
+}
+impl IndexMut<Coordinate> for Grid {
+    fn index_mut<'a>(&'a mut self, index: Coordinate) -> &'a mut Block {
+        if index.x < self.width && index.y < self.height {
+            let index_1d = interleave_morton(index.x, index.y) as usize;
+            &mut self.blocks[index_1d]
+        } else {
+            panic!("Accessing out of bound block")
+        }
     }
 }
 

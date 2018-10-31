@@ -25,6 +25,8 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 extern crate wee_alloc;
 
+#[macro_use]
+extern crate itertools;
 extern crate arraydeque;
 extern crate morton;
 extern crate rand;

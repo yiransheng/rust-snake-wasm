@@ -1,15 +1,12 @@
 use alloc::vec::Vec;
 use rand::Rng;
 
-use data::{Block, Coordinate, Direction, Natnum};
+use data::{Block, Coordinate, Direction, Grid, Natnum};
 use system::{GameOver, Model};
 
 pub use self::builder::WorldBuilder;
 
-use self::grid::Grid;
-
 mod builder;
-mod grid;
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
