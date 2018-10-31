@@ -8,7 +8,7 @@ pub struct StartGame;
 
 impl Into<Option<StartGame>> for Key {
     fn into(self) -> Option<StartGame> {
-        if self != Key::default() {
+        if self != Key::none() {
             Some(StartGame)
         } else {
             None

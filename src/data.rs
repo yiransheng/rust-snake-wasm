@@ -13,8 +13,8 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn new(code: u8) -> Self {
-        Key { code }
+    pub fn none() -> Self {
+        Key { code: 0 }
     }
 
     pub fn is_direction_key(self) -> bool {
@@ -172,11 +172,9 @@ impl Grid {
 
         let mut blocks = vec![Block::OutOfBound; size_requirement];
 
-        for x in 0..width {
-            for y in 0..height {
-                let index = Coordinate { x, y }.encode_usize();
-                blocks[index] = Block::Empty;
-            }
+        for (x, y) in iproduct!(0..width, 0..height) {
+            let index = Coordinate { x, y }.encode_usize();
+            blocks[index] = Block::Empty;
         }
 
         Grid {
@@ -221,12 +219,6 @@ impl Grid {
 impl From<u8> for Key {
     fn from(code: u8) -> Key {
         Key { code }
-    }
-}
-
-impl Default for Key {
-    fn default() -> Self {
-        Key { code: 0 }
     }
 }
 

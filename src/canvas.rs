@@ -125,14 +125,10 @@ impl DrawGrid for CanvasEnv {
 
         let r_full = self.tile_size / 2.0;
         let r = radius.scale(r_full);
-        // gc.save();
 
-        // gc.set_fill_style(&"rgba(255, 0, 0, 1)".into());
         self.gc.begin_path();
         let _ = self.gc.arc(x + r_full, y + r_full, r, 0.0, 2.0 * PI);
         self.gc.fill();
-
-        // gc.restore();
     }
 
     fn show_game_over(&mut self) {
