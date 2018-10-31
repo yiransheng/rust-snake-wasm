@@ -27,7 +27,6 @@ extern crate wee_alloc;
 
 extern crate arraydeque;
 extern crate morton;
-extern crate num_traits;
 extern crate rand;
 
 #[macro_use]

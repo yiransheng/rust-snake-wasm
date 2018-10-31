@@ -56,13 +56,11 @@ pub struct SnakeBuilder {
 impl SnakeBuilder {
     pub fn extend(mut self, dir: Direction) -> Self {
         let next_head = self.next_head;
-        let next_head_block = self.grid.get_block(next_head);
+        let next_head_block = self.grid[next_head];
 
         assert!(next_head_block.is_empty());
 
-        if !self.grid.set_block(next_head, Block::from(dir)) {
-            return self;
-        }
+        self.grid[next_head] = Block::from(dir);
 
         self.snake_len += 1;
 

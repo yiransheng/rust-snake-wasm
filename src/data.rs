@@ -1,4 +1,7 @@
+use std::cmp::Ordering;
 use std::convert::{From, Into};
+
+use morton::interleave_morton;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Key {
@@ -89,8 +92,8 @@ pub type Natnum = u16;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Coordinate {
-    pub x: u16,
-    pub y: u16,
+    pub x: Natnum,
+    pub y: Natnum,
 }
 
 impl Coordinate {
@@ -104,6 +107,22 @@ impl Coordinate {
             Direction::South => UncheckedCoordinate::new(x, y.wrapping_add(1)),
             Direction::East => UncheckedCoordinate::new(x.wrapping_add(1), y),
             Direction::West => UncheckedCoordinate::new(x.wrapping_sub(1), y),
+        }
+    }
+
+    #[inline(always)]
+    pub fn as_usize(self) -> usize {
+        interleave_morton(self.x, self.y) as usize
+    }
+}
+
+impl PartialOrd for Coordinate {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self.x.cmp(&other.x), self.y.cmp(&other.y)) {
+            (Ordering::Equal, o) => Some(o),
+            (o, Ordering::Equal) => Some(o),
+            (ox, oy) if ox == oy => Some(ox),
+            _ => None,
         }
     }
 }
@@ -191,14 +210,14 @@ mod tests {
 
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     struct Bound {
-        width: u16,
-        height: u16,
+        width: Natnum,
+        height: Natnum,
     }
 
     impl Arbitrary for Bound {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let w = u16::arbitrary(g);
-            let h = u16::arbitrary(g);
+            let w = Natnum::arbitrary(g);
+            let h = Natnum::arbitrary(g);
 
             Bound {
                 width: if w > 0 { w } else { 1 },
@@ -221,8 +240,8 @@ mod tests {
     impl Arbitrary for Coordinate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Coordinate {
-                x: u16::arbitrary(g),
-                y: u16::arbitrary(g),
+                x: Natnum::arbitrary(g),
+                y: Natnum::arbitrary(g),
             }
         }
     }
@@ -243,6 +262,16 @@ mod tests {
     quickcheck! {
         fn double_opposite_is_identity(dir: Direction) -> bool {
             dir.opposite().opposite() == dir
+        }
+
+        fn coordinate_usize_preserves_partial_order(inputs: (Coordinate, Coordinate)) -> bool {
+            let (a, b) = inputs;
+
+            if let Some(ordering) = a.partial_cmp(&b) {
+                ordering == a.as_usize().cmp(&b.as_usize())
+            } else {
+                true
+            }
         }
 
         fn opposite_direction_moves_cancel(inputs: (UncheckedCoordinate,Direction,Bound)) -> bool {

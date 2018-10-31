@@ -76,7 +76,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
             Ok(r) => Ok(r),
             Err(err) => match err {
                 UpdateError::HeadDetached | UpdateError::TailDetached => {
-                    unreachable!("Game breaking bug, snake invairant violation")
+                    panic!("Game breaking bug, snake invairant violation")
                 }
                 _ => Err(err),
             },
@@ -216,12 +216,12 @@ impl<R: Rng> World<R> {
 
     #[inline(always)]
     fn get_block(&self, coord: Coordinate) -> Block {
-        self.grid.get_block(coord)
+        self.grid[coord]
     }
 
     #[inline(always)]
     fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
-        self.grid.set_block(coord, b.into());
+        self.grid[coord] = b.into()
     }
 
     #[inline]
@@ -245,7 +245,7 @@ impl<'a> Iterator for SnakeIter<'a> {
     type Item = (Coordinate, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let block = self.grid.get_block(self.at);
+        let block = self.grid[self.at];
 
         match block.snake() {
             Some(dir) => {

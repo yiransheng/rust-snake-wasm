@@ -1,7 +1,6 @@
 use std::f64::consts::PI;
 use std::marker::PhantomData;
 
-use num_traits::{AsPrimitive, Unsigned};
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 

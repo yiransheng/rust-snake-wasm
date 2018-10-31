@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use std::ops::{Index, IndexMut};
 
 use data::{Block, Coordinate, Natnum};
 use rand::Rng;
@@ -13,10 +14,27 @@ pub struct Grid {
 
 impl Grid {
     pub(super) fn empty(width: Natnum, height: Natnum) -> Self {
+        debug_assert!(width > 0 && height > 0);
+
+        let max_coord = Coordinate {
+            x: width - 1,
+            y: height - 1,
+        };
+        let size_requirement = max_coord.as_usize() + 1;
+
+        let mut blocks = vec![Block::OutOfBound; size_requirement];
+
+        for x in 0..width {
+            for y in 0..height {
+                let index = Coordinate { x, y }.as_usize();
+                blocks[index] = Block::Empty;
+            }
+        }
+
         Grid {
-            width: width as Natnum,
-            height: height as Natnum,
-            blocks: vec![Block::Empty; (width * height) as usize],
+            width: width,
+            height: height,
+            blocks,
         }
     }
 
@@ -27,6 +45,10 @@ impl Grid {
     #[inline(always)]
     pub(super) fn height(&self) -> Natnum {
         self.height
+    }
+
+    pub fn contains(&self, coord: Coordinate) -> bool {
+        coord.x < self.width && coord.y < self.height
     }
 
     pub(super) fn random_coordinate<R: Rng>(&self, rng: &mut R) -> Coordinate {
@@ -40,71 +62,45 @@ impl Grid {
         self.blocks.iter_mut().for_each(|x| *x = Block::Empty);
     }
 
-    #[inline]
-    pub(super) fn get_block(&self, coord: Coordinate) -> Block {
-        if let Some(index) = self.find_index(coord) {
-            self.blocks[index]
-        } else {
-            Block::OutOfBound
-        }
+    /*
+     *     #[cfg(test)]
+     *     fn get_prev_block(&self, coord: Coordinate) -> Option<Block> {
+     *         let b = self.get_block(coord);
+     *
+     *         let dir = b.snake()?;
+     *         let dir = dir.opposite();
+     *
+     *         let prev_coord =
+     *             coord.move_towards(dir).wrap_inside(self.width, self.height);
+     *
+     *         let prev_block = self.get_block(prev_coord);
+     *
+     *         Some(prev_block)
+     *     }
+     *     #[cfg(test)]
+     *     fn get_next_block(&self, coord: Coordinate) -> Option<Block> {
+     *         let b = self.get_block(coord);
+     *
+     *         let dir = b.snake()?;
+     *         let next_coord =
+     *             coord.move_towards(dir).wrap_inside(self.width, self.height);
+     *
+     *         let next_block = self.get_block(next_coord);
+     *
+     *         Some(next_block)
+     *     }
+     */
+}
+
+impl Index<Coordinate> for Grid {
+    type Output = Block;
+
+    fn index<'a>(&'a self, index: Coordinate) -> &'a Block {
+        &self.blocks[index.as_usize()]
     }
-
-    #[inline]
-    pub(super) fn set_block(&mut self, coord: Coordinate, b: Block) -> bool {
-        if let Some(block) = self.get_block_mut(coord) {
-            *block = b;
-            true
-        } else {
-            false
-        }
-    }
-
-    #[inline]
-    fn get_block_mut(&mut self, coord: Coordinate) -> Option<&mut Block> {
-        if let Some(index) = self.find_index(coord) {
-            self.blocks.get_mut(index)
-        } else {
-            None
-        }
-    }
-
-    fn find_index(&self, coord: Coordinate) -> Option<usize> {
-        let width = self.width;
-        let height = self.height;;
-
-        let Coordinate { x, y } = coord;
-
-        if x >= width || y >= height {
-            None
-        } else {
-            Some((y * width + x) as usize)
-        }
-    }
-
-    #[cfg(test)]
-    fn get_prev_block(&self, coord: Coordinate) -> Option<Block> {
-        let b = self.get_block(coord);
-
-        let dir = b.snake()?;
-        let dir = dir.opposite();
-
-        let prev_coord =
-            coord.move_towards(dir).wrap_inside(self.width, self.height);
-
-        let prev_block = self.get_block(prev_coord);
-
-        Some(prev_block)
-    }
-    #[cfg(test)]
-    fn get_next_block(&self, coord: Coordinate) -> Option<Block> {
-        let b = self.get_block(coord);
-
-        let dir = b.snake()?;
-        let next_coord =
-            coord.move_towards(dir).wrap_inside(self.width, self.height);
-
-        let next_block = self.get_block(next_coord);
-
-        Some(next_block)
+}
+impl IndexMut<Coordinate> for Grid {
+    fn index_mut<'a>(&'a mut self, index: Coordinate) -> &'a mut Block {
+        &mut self.blocks[index.as_usize()]
     }
 }
