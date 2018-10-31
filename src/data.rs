@@ -1,10 +1,10 @@
 use alloc::vec::Vec;
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
 use std::convert::{From, Into};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
-use morton::interleave_morton;
+use morton::{deinterleave_morton, interleave_morton};
 use rand::Rng;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -183,7 +183,8 @@ pub struct Grid {
 
 impl Grid {
     pub fn empty(width: Natnum, height: Natnum) -> Self {
-        debug_assert!(width > 0 && height > 0);
+        let width = max(1, width);
+        let height = max(1, height);
 
         let max_coord = Coordinate {
             x: width - 1,
@@ -281,8 +282,7 @@ impl Index<Coordinate> for Grid {
 
     fn index<'a>(&'a self, index: Coordinate) -> &'a Block {
         if index.x < self.width && index.y < self.height {
-            let index_1d = interleave_morton(index.x, index.y) as usize;
-            &self.blocks[index_1d]
+            &self.blocks[index.as_usize()]
         } else {
             &Block::OutOfBound
         }
@@ -291,10 +291,48 @@ impl Index<Coordinate> for Grid {
 impl IndexMut<Coordinate> for Grid {
     fn index_mut<'a>(&'a mut self, index: Coordinate) -> &'a mut Block {
         if index.x < self.width && index.y < self.height {
-            let index_1d = interleave_morton(index.x, index.y) as usize;
-            &mut self.blocks[index_1d]
+            &mut self.blocks[index.as_usize()]
         } else {
             panic!("Accessing out of bound block")
+        }
+    }
+}
+
+impl FromIterator<(Coordinate, Block)> for Grid {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = (Coordinate, Block)>,
+    {
+        let mut blocks = vec![Block::Empty];
+        let mut x_max: Natnum = 0;
+        let mut y_max: Natnum = 0;
+
+        for (coord, block) in iter {
+            let index = coord.as_usize();
+
+            for _ in blocks.len()..index {
+                blocks.push(Block::Empty);
+            }
+            x_max = max(x_max, coord.x);
+            y_max = max(y_max, coord.y);
+
+            blocks[index] = block;
+        }
+
+        let width = x_max + 1;
+        let height = y_max + 1;
+
+        blocks.iter_mut().enumerate().for_each(|(index, block)| {
+            let (x, y) = deinterleave_morton(index as u32);
+            if x > x_max || y > y_max {
+                *block = Block::OutOfBound;
+            }
+        });
+
+        Grid {
+            width,
+            height,
+            blocks,
         }
     }
 }
