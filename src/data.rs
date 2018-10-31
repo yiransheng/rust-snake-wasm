@@ -115,8 +115,12 @@ impl Coordinate {
     }
 
     #[inline(always)]
-    pub fn as_usize(self) -> usize {
+    pub fn encode_usize(self) -> usize {
         interleave_morton(self.x, self.y) as usize
+    }
+    pub fn decode_usize(n: usize) -> Self {
+        let (x, y) = deinterleave_morton(n as u32);
+        Coordinate { x, y }
     }
 }
 
@@ -190,13 +194,13 @@ impl Grid {
             x: width - 1,
             y: height - 1,
         };
-        let size_requirement = max_coord.as_usize() + 1;
+        let size_requirement = max_coord.encode_usize() + 1;
 
         let mut blocks = vec![Block::OutOfBound; size_requirement];
 
         for x in 0..width {
             for y in 0..height {
-                let index = Coordinate { x, y }.as_usize();
+                let index = Coordinate { x, y }.encode_usize();
                 blocks[index] = Block::Empty;
             }
         }
@@ -282,7 +286,7 @@ impl Index<Coordinate> for Grid {
 
     fn index<'a>(&'a self, index: Coordinate) -> &'a Block {
         if index.x < self.width && index.y < self.height {
-            &self.blocks[index.as_usize()]
+            &self.blocks[index.encode_usize()]
         } else {
             &Block::OutOfBound
         }
@@ -291,7 +295,7 @@ impl Index<Coordinate> for Grid {
 impl IndexMut<Coordinate> for Grid {
     fn index_mut<'a>(&'a mut self, index: Coordinate) -> &'a mut Block {
         if index.x < self.width && index.y < self.height {
-            &mut self.blocks[index.as_usize()]
+            &mut self.blocks[index.encode_usize()]
         } else {
             panic!("Accessing out of bound block")
         }
@@ -308,22 +312,23 @@ impl FromIterator<(Coordinate, Block)> for Grid {
         let mut y_max: Natnum = 0;
 
         for (coord, block) in iter {
-            let index = coord.as_usize();
+            x_max = max(x_max, coord.x);
+            y_max = max(y_max, coord.y);
+
+            let index = Coordinate { x: x_max, y: y_max }.encode_usize();
 
             for _ in blocks.len()..index {
                 blocks.push(Block::Empty);
             }
-            x_max = max(x_max, coord.x);
-            y_max = max(y_max, coord.y);
 
-            blocks[index] = block;
+            blocks.push(block);
         }
 
         let width = x_max + 1;
         let height = y_max + 1;
 
         blocks.iter_mut().enumerate().for_each(|(index, block)| {
-            let (x, y) = deinterleave_morton(index as u32);
+            let Coordinate { x, y } = Coordinate::decode_usize(index);
             if x > x_max || y > y_max {
                 *block = Block::OutOfBound;
             }
@@ -342,6 +347,8 @@ mod tests {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
+    const SIZE_LIMIT: Natnum = 255;
+
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     struct Bound {
         width: Natnum,
@@ -350,12 +357,12 @@ mod tests {
 
     impl Arbitrary for Bound {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let w = Natnum::arbitrary(g);
-            let h = Natnum::arbitrary(g);
+            let w = Natnum::arbitrary(g) % SIZE_LIMIT;
+            let h = Natnum::arbitrary(g) % SIZE_LIMIT;
 
             Bound {
-                width: if w > 0 { w } else { 1 },
-                height: if h > 0 { h } else { 1 },
+                width: max(w, 1),
+                height: max(h, 1),
             }
         }
     }
@@ -374,8 +381,8 @@ mod tests {
     impl Arbitrary for Coordinate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Coordinate {
-                x: Natnum::arbitrary(g),
-                y: Natnum::arbitrary(g),
+                x: Natnum::arbitrary(g) % SIZE_LIMIT,
+                y: Natnum::arbitrary(g) % SIZE_LIMIT,
             }
         }
     }
@@ -402,13 +409,13 @@ mod tests {
             let (a, b) = inputs;
 
             if let Some(ordering) = a.partial_cmp(&b) {
-                ordering == a.as_usize().cmp(&b.as_usize())
+                ordering == a.encode_usize().cmp(&b.encode_usize())
             } else {
                 true
             }
         }
 
-        fn opposite_direction_moves_cancel(inputs: (UncheckedCoordinate,Direction,Bound)) -> bool {
+        fn opposite_direction_moves_cancel(inputs: (UncheckedCoordinate, Direction, Bound)) -> bool {
             let (coord, dir, Bound { width, height }) = inputs;
 
             // make sure starting coord is inside bound
@@ -416,7 +423,9 @@ mod tests {
             let orig_coord = coord;
 
             let coord = coord.move_towards(dir).wrap_inside(width, height);
-            let coord = coord.move_towards(dir.opposite()).wrap_inside(width, height);
+            let coord = coord
+                .move_towards(dir.opposite())
+                .wrap_inside(width, height);
 
             coord == orig_coord
         }
@@ -428,10 +437,18 @@ mod tests {
             let mut coord = coord.wrap_inside(width, height);
             let orig_coord = coord;
 
-            coord = coord.move_towards(Direction::East).wrap_inside(width, height);
-            coord = coord.move_towards(Direction::North).wrap_inside(width, height);
-            coord = coord.move_towards(Direction::West).wrap_inside(width, height);
-            coord = coord.move_towards(Direction::South).wrap_inside(width, height);
+            coord = coord
+                .move_towards(Direction::East)
+                .wrap_inside(width, height);
+            coord = coord
+                .move_towards(Direction::North)
+                .wrap_inside(width, height);
+            coord = coord
+                .move_towards(Direction::West)
+                .wrap_inside(width, height);
+            coord = coord
+                .move_towards(Direction::South)
+                .wrap_inside(width, height);
 
             coord == orig_coord
         }
@@ -445,6 +462,21 @@ mod tests {
             } else {
                 true
             }
+        }
+
+        fn build_grid_with_correct_oob_markers(coords: Vec<Coordinate>) -> bool {
+            let grid: Grid = coords
+                .iter()
+                .map(|c| (*c, Block::Empty))
+                .collect();
+
+            let valid_count =
+                grid.blocks
+                .iter()
+                .filter(|&b| *b != Block::OutOfBound)
+                .count();
+
+            valid_count == (grid.width * grid.height) as usize
         }
     }
 }
