@@ -7,7 +7,7 @@ use super::*;
 use data::{Bounding, Grid, Wrapping};
 
 #[test]
-fn test_two_steps() {
+fn test_two_steps_inchworm() {
     let snake_string = indoc!(
         "
         ..........
@@ -42,6 +42,46 @@ fn test_two_steps() {
     world.step(None).unwrap();
 
     assert_eq!(&step_2, &world.grid.to_string());
+}
+
+#[test]
+fn test_eat_food() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>v.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let digesting = indoc!(
+        "
+        ..........
+        ..ooo.....
+        ....o.....
+        ....o.....
+        .........."
+    );
+
+    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
+
+    world.step(None).unwrap();
+    world.step(None).unwrap();
+    world.step(None).unwrap();
+
+    assert_eq!(&digesting, &world.grid.to_string());
+
+    let update = world.step(None).unwrap().unwrap();
+
+    assert_matches!(update, WorldUpdate::SetBlock{ at: _, block: Block::Food });
+
+    // erase food, as it's generated randomly, no assumptions on its position
+    match update {
+        WorldUpdate::SetBlock { at, .. } => {
+            assert_eq!(world.grid[at], Block::Food);
+        }
+        _ => {}
+    }
 }
 
 #[test]
