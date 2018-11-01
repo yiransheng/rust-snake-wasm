@@ -335,16 +335,16 @@ impl FromIterator<(Coordinate, Block)> for Grid {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod test_utils {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
     const SIZE_LIMIT: SmallNat = 255;
 
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-    struct Bound {
-        width: SmallNat,
-        height: SmallNat,
+    pub struct Bound {
+        pub width: SmallNat,
+        pub height: SmallNat,
     }
 
     impl Arbitrary for Bound {
@@ -385,6 +385,13 @@ mod tests {
             }
         }
     }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_utils::*;
+    use super::*;
 
     #[test]
     fn test_block_size() {

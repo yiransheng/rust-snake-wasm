@@ -107,13 +107,21 @@ impl<'m> Stateful<'m> for RenderSpeed {
 
         self.velocity = v;
 
-        let frame_count = (MIN_VELOCITY / v * FRAMES).ceil();
-
-        Ok(Some(frame_count as u8))
+        Ok(Some(self.derive_frame_count()))
     }
     fn tear_down(&mut self) {
         self.direction = self.initial_direction;
         self.velocity = MIN_VELOCITY;
+    }
+}
+
+impl RenderSpeed {
+    #[inline(always)]
+    fn derive_frame_count(&self) -> u8 {
+        let v = self.velocity;
+        let frame_count = (MIN_VELOCITY / v * FRAMES).ceil();
+
+        frame_count as u8
     }
 }
 
@@ -182,7 +190,7 @@ mod tests {
     #[test]
     fn test_acceleration_limiting_behavior() {
         fn final_frame_count_limit(n: usize) -> u8 {
-            let mut render_speed = RenderSpeed::new(Direction::East);
+            let render_speed = RenderSpeed::new(Direction::East);
 
             (0..n)
                 .scan(render_speed, |rs, _| {
@@ -199,5 +207,19 @@ mod tests {
 
         assert!(final_frame_count_limit(20) < ANIMATION_FRAME_COUNT);
         assert!(final_frame_count_limit(20) > 0);
+    }
+
+    quickcheck! {
+        fn render_speed_produces_bounded_frame_counts(maybe_dirs: Vec<Option<Direction>>) -> bool {
+            let mut render_speed = RenderSpeed::new(Direction::East);
+
+            for cmd in maybe_dirs {
+                render_speed.step(cmd).unwrap();
+            }
+
+            let frame_count = render_speed.derive_frame_count();
+
+            frame_count > 0 && frame_count <= ANIMATION_FRAME_COUNT
+        }
     }
 }
