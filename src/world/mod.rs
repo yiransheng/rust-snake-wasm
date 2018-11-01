@@ -61,11 +61,11 @@ impl<'a, R: Rng + 'a, BB: BoundingBehavior + 'static> Model<'a>
 {
     type Cmd = Direction;
     type Update = WorldUpdate;
-    type State = Initializer<'a, R, BB>;
+    type Init = Initializer<'a, R, BB>;
 
     type Error = UpdateError;
 
-    fn initialize(&'a mut self) -> Self::State {
+    fn initialize(&'a mut self) -> Self::Init {
         let food_at = self.spawn_food();
 
         Initializer::WorldSize(&*self, food_at)

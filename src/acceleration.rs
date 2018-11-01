@@ -71,11 +71,11 @@ impl RenderSpeed {
 
 impl<'m> Model<'m> for RenderSpeed {
     type Cmd = Direction;
-    type State = Forever<u8>;
+    type Init = Forever<u8>;
     type Update = u8;
     type Error = Void;
 
-    fn initialize(&'m mut self) -> Self::State {
+    fn initialize(&'m mut self) -> Self::Init {
         Forever(ANIMATION_FRAME_COUNT)
     }
 

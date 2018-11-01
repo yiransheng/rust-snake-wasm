@@ -32,11 +32,11 @@ where
     U: 'static + From<WorldUpdate>,
 {
     type Cmd = StartGame;
-    type State = Option<U>;
+    type Init = Option<U>;
     type Update = U;
     type Error = GameOver;
 
-    fn initialize(&'m mut self) -> Self::State {
+    fn initialize(&'m mut self) -> Self::Init {
         Some(U::from(WorldUpdate::Dead))
     }
 

@@ -22,11 +22,11 @@ impl Into<GameOver> for Void {
 
 pub trait Model<'m> {
     type Cmd;
-    type State: IntoIterator<Item = Self::Update> + 'm;
+    type Init: IntoIterator<Item = Self::Update> + 'm;
     type Update;
     type Error: Into<GameOver>;
 
-    fn initialize(&'m mut self) -> Self::State;
+    fn initialize(&'m mut self) -> Self::Init;
 
     fn step(
         &mut self,
@@ -101,16 +101,16 @@ where
 {
     type Cmd = L::Cmd;
     type Update = T;
-    type State = Map<
+    type Init = Map<
         Zip<
-            <L::State as IntoIterator>::IntoIter,
-            <R::State as IntoIterator>::IntoIter,
+            <L::Init as IntoIterator>::IntoIter,
+            <R::Init as IntoIterator>::IntoIter,
         >,
         &'m F,
     >;
     type Error = L::Error;
 
-    fn initialize(&'m mut self) -> Self::State {
+    fn initialize(&'m mut self) -> Self::Init {
         self.left
             .initialize()
             .into_iter()
@@ -188,14 +188,14 @@ where
     Cmd: Into<Option<A::Cmd>> + Into<Option<B::Cmd>>,
 {
     type Cmd = Cmd;
-    type State = Either<
-        <A::State as IntoIterator>::IntoIter,
-        <B::State as IntoIterator>::IntoIter,
+    type Init = Either<
+        <A::Init as IntoIterator>::IntoIter,
+        <B::Init as IntoIterator>::IntoIter,
     >;
     type Update = A::Update;
     type Error = GameOver;
 
-    fn initialize(&'m mut self) -> Self::State {
+    fn initialize(&'m mut self) -> Self::Init {
         match self.current() {
             Either::Left(a) => Either::Left(a.initialize().into_iter()),
             Either::Right(b) => Either::Right(b.initialize().into_iter()),
