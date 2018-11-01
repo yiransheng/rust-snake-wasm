@@ -391,6 +391,19 @@ mod tests {
         // nested enum optimization kicking in
         assert_eq!(::std::mem::size_of::<Block>(), 1,)
     }
+    #[test]
+    fn test_uncheck_coordinate_generic_inside() {
+        let orig = Coordinate { x: 0, y: 0 };
+        let unchecked = orig.move_towards(Direction::West);
+
+        let grid = Grid::empty(10, 2);
+
+        assert_eq!(
+            unchecked.inside::<Wrapping>(&grid),
+            Some(Coordinate { x: 9, y: 0 })
+        );
+        assert_eq!(unchecked.inside::<Bounding>(&grid), None);
+    }
 
     quickcheck! {
         fn double_opposite_is_identity(dir: Direction) -> bool {
