@@ -1,9 +1,9 @@
 use void::Void;
 
+use canvas::{CanvasEnv, WorldUpdateDraw};
 use constants::ANIMATION_FRAME_COUNT;
 use data::Direction;
-use renderers::{CanvasEnv, WorldUpdateDraw};
-use system::{IncrRender, Model};
+use system::{IncrRender, Stateful};
 use world::WorldUpdate;
 
 pub struct VariableFrame<T = WorldUpdate> {
@@ -57,6 +57,7 @@ const POWER: f64 = MAX_VELOCITY * MAX_VELOCITY * FRICTION;
 #[derive(Debug, Copy, Clone)]
 pub struct RenderSpeed {
     direction: Direction,
+    initial_direction: Direction,
     velocity: f64,
 }
 
@@ -64,18 +65,19 @@ impl RenderSpeed {
     pub fn new(direction: Direction) -> Self {
         RenderSpeed {
             direction,
-            velocity: ANIMATION_FRAME_COUNT as f64,
+            initial_direction: direction,
+            velocity: MIN_VELOCITY,
         }
     }
 }
 
-impl<'m> Model<'m> for RenderSpeed {
+impl<'m> Stateful<'m> for RenderSpeed {
     type Cmd = Direction;
-    type State = Forever<u8>;
+    type Init = Forever<u8>;
     type Update = u8;
     type Error = Void;
 
-    fn initialize(&'m mut self) -> Self::State {
+    fn initialize(&'m mut self) -> Self::Init {
         Forever(ANIMATION_FRAME_COUNT)
     }
 
@@ -105,11 +107,22 @@ impl<'m> Model<'m> for RenderSpeed {
 
         self.velocity = v;
 
+        Ok(Some(self.derive_frame_count()))
+    }
+    fn tear_down(&mut self) {
+        self.direction = self.initial_direction;
+        self.velocity = MIN_VELOCITY;
+    }
+}
+
+impl RenderSpeed {
+    #[inline(always)]
+    fn derive_frame_count(&self) -> u8 {
+        let v = self.velocity;
         let frame_count = (MIN_VELOCITY / v * FRAMES).ceil();
 
-        Ok(Some(frame_count as u8))
+        frame_count as u8
     }
-    fn tear_down(&mut self) {}
 }
 
 pub struct Forever<T>(T);
@@ -119,5 +132,94 @@ impl<T: Copy> Iterator for Forever<T> {
 
     fn next(&mut self) -> Option<T> {
         Some(self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_acceleration_one_step() {
+        let mut render_speed = RenderSpeed::new(Direction::East);
+        let v0 = render_speed.velocity;
+
+        render_speed
+            .step(Some(Direction::East))
+            .expect("It never errors");
+
+        assert!(render_speed.velocity > v0);
+    }
+
+    #[test]
+    fn test_deacceleration_one_step() {
+        let mut render_speed = RenderSpeed::new(Direction::East);
+
+        render_speed.step(Some(Direction::East)).unwrap();
+        render_speed.step(Some(Direction::East)).unwrap();
+        render_speed.step(Some(Direction::East)).unwrap();
+
+        let v1 = render_speed.velocity;
+
+        render_speed.step(None);
+
+        assert!(render_speed.velocity < v1);
+    }
+
+    #[test]
+    fn test_deacceleration_forced() {
+        let dir = Direction::North;
+
+        let mut render_speed = RenderSpeed::new(dir);
+
+        render_speed.step(Some(dir)).unwrap();
+        render_speed.step(Some(dir)).unwrap();
+        render_speed.step(Some(dir)).unwrap();
+
+        let v1 = render_speed.velocity;
+
+        let mut render_speed_a = render_speed;
+        let mut render_speed_b = render_speed;
+
+        render_speed_a.step(None).unwrap();
+        render_speed_b.step(Some(dir.opposite())).unwrap();
+
+        assert!(render_speed_a.velocity > render_speed_b.velocity);
+    }
+
+    #[test]
+    fn test_acceleration_limiting_behavior() {
+        fn final_frame_count_limit(n: usize) -> u8 {
+            let render_speed = RenderSpeed::new(Direction::East);
+
+            (0..n)
+                .scan(render_speed, |rs, _| {
+                    let frame_count =
+                        rs.step(Some(Direction::East)).unwrap().unwrap();
+
+                    Some(frame_count)
+                })
+                .last()
+                .unwrap()
+        }
+
+        assert_eq!(final_frame_count_limit(100), final_frame_count_limit(500));
+
+        assert!(final_frame_count_limit(20) < ANIMATION_FRAME_COUNT);
+        assert!(final_frame_count_limit(20) > 0);
+    }
+
+    quickcheck! {
+        fn render_speed_produces_bounded_frame_counts(maybe_dirs: Vec<Option<Direction>>) -> bool {
+            let mut render_speed = RenderSpeed::new(Direction::East);
+
+            for cmd in maybe_dirs {
+                render_speed.step(cmd).unwrap();
+            }
+
+            let frame_count = render_speed.derive_frame_count();
+
+            frame_count > 0 && frame_count <= ANIMATION_FRAME_COUNT
+        }
     }
 }

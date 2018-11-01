@@ -17,6 +17,11 @@ rand = "0.5.5"
 arraydeque = "0.4.3"
 derive_deref = "1.0"
 console_error_panic_hook = "0.1"
+quickcheck = "0.7.1"
+morton = "0.2.0"
+itertools = "0.7"
+indoc = "0.2"
+matches = "0.1.8"
 
 [dependencies.web-sys]
 features = [

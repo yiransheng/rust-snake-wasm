@@ -1,16 +1,20 @@
 use alloc::vec::Vec;
-use rand::Rng;
-use std::convert::{From, Into};
+use std::marker::PhantomData;
 
-use data::{Block, Coordinate, Direction};
-use system::{GameOver, Model};
+use rand::Rng;
+
+use data::{
+    Block, BoundingBehavior, Coordinate, Direction, Grid, SmallNat, Wrapping,
+};
+use system::{GameOver, Stateful};
 
 pub use self::builder::WorldBuilder;
 
-use self::grid::Grid;
-
 mod builder;
-mod grid;
+#[cfg(test)]
+mod test_utils;
+#[cfg(test)]
+mod tests;
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
@@ -19,7 +23,7 @@ type Result<T> = ::std::result::Result<T, UpdateError>;
 pub enum WorldUpdate {
     SetBlock { block: Block, at: Coordinate },
     Clear { prev_block: Block, at: Coordinate },
-    SetWorldSize(u32, u32),
+    SetWorldSize(SmallNat, SmallNat),
     Dead,
 }
 
@@ -43,7 +47,7 @@ enum SnakeState {
     Consuming(Block),
 }
 
-pub struct World<R> {
+pub struct World<R, BB: BoundingBehavior = Wrapping> {
     grid: Grid,
     state: SnakeState,
 
@@ -52,16 +56,20 @@ pub struct World<R> {
 
     initial_snake: Vec<(Coordinate, Direction)>,
     rng: R,
+
+    _bounding_behavior: PhantomData<BB>,
 }
 
-impl<'a, R: Rng + 'a> Model<'a> for World<R> {
+impl<'a, R: Rng + 'a, BB: BoundingBehavior + 'static> Stateful<'a>
+    for World<R, BB>
+{
     type Cmd = Direction;
     type Update = WorldUpdate;
-    type State = Initializer<'a, R>;
+    type Init = Initializer<'a, R, BB>;
 
     type Error = UpdateError;
 
-    fn initialize(&'a mut self) -> Self::State {
+    fn initialize(&'a mut self) -> Self::Init {
         let food_at = self.spawn_food();
 
         Initializer::WorldSize(&*self, food_at)
@@ -77,7 +85,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
             Ok(r) => Ok(r),
             Err(err) => match err {
                 UpdateError::HeadDetached | UpdateError::TailDetached => {
-                    unreachable!("Game breaking bug, snake invairant violation")
+                    panic!("Game breaking bug, snake invairant violation")
                 }
                 _ => Err(err),
             },
@@ -85,7 +93,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
     }
 }
 
-impl<R: Rng> World<R> {
+impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
     fn step(&mut self, cmd: Option<Direction>) -> Result<Option<WorldUpdate>> {
         if let Some(dir) = cmd {
             self.set_direction(dir)?;
@@ -122,6 +130,77 @@ impl<R: Rng> World<R> {
         Ok(())
     }
 
+    fn motion(&mut self) -> Result<Block> {
+        let head_block = self.get_block(self.head);
+        let head_dir = head_block.snake_or_err(UpdateError::HeadDetached)?;
+
+        let next_head = self
+            .head
+            .move_towards(head_dir)
+            .inside::<BB>(&self.grid)
+            .ok_or(UpdateError::OutOfBound)?;
+
+        let next_head_block = self.get_block(next_head);
+
+        match next_head_block {
+            Block::Empty | Block::Food => {
+                self.head = next_head;
+                self.set_block(next_head, head_block);
+                Ok(next_head_block)
+            }
+            Block::Snake(_) => Err(UpdateError::CollideBody),
+            Block::OutOfBound => Err(UpdateError::OutOfBound),
+        }
+    }
+
+    fn digest(&mut self, tile: Block) -> Result<WorldUpdate> {
+        match tile {
+            Block::Empty => {
+                let tail = self.tail;
+                let tail_block = self.get_block(tail);
+
+                let tail_dir =
+                    tail_block.snake_or_err(UpdateError::TailDetached)?;
+
+                let next_tail = tail
+                    .move_towards(tail_dir)
+                    .inside::<BB>(&self.grid)
+                    .ok_or(UpdateError::OutOfBound)?;
+
+                self.tail = next_tail;
+
+                self.set_block(tail, Block::Empty);
+
+                Ok(WorldUpdate::Clear {
+                    prev_block: tail_block,
+                    at: tail,
+                })
+            }
+            Block::Food => {
+                let coord = self.spawn_food();
+
+                Ok(WorldUpdate::SetBlock {
+                    block: Block::Food,
+                    at: coord,
+                })
+            }
+            Block::Snake(_) => Err(UpdateError::CollideBody),
+            Block::OutOfBound => Err(UpdateError::OutOfBound),
+        }
+    }
+
+    fn spawn_food(&mut self) -> Coordinate {
+        loop {
+            let coord = self.grid.random_coordinate(&mut self.rng);
+            let current_block = self.get_block(coord);
+
+            if current_block == Block::Empty {
+                self.set_block(coord, Block::Food);
+                return coord;
+            }
+        }
+    }
+
     fn reset(&mut self) {
         self.grid.clear();
 
@@ -142,116 +221,50 @@ impl<R: Rng> World<R> {
         self.initial_snake = initial_snake;
     }
 
-    fn motion(&mut self) -> Result<Block> {
-        let head_block = self.get_block(self.head);
-        let head_dir = head_block.snake_or_err(UpdateError::HeadDetached)?;
-
-        let next_head = self
-            .head
-            .move_towards(head_dir)
-            .wrap_inside(self.grid.width(), self.grid.height());
-
-        let next_head_block = self.get_block(next_head);
-
-        match next_head_block {
-            Block::Empty | Block::Food => {
-                self.head = next_head;
-                self.set_block(next_head, head_block);
-                Ok(next_head_block)
-            }
-            Block::Snake(_) => Err(UpdateError::CollideBody),
-            Block::OutOfBound => {
-                unreachable!("No bounds in wrapping behavior, a bug")
-            }
-        }
-    }
-
-    fn digest(&mut self, tile: Block) -> Result<WorldUpdate> {
-        match tile {
-            Block::Empty => {
-                let tail = self.tail;
-                let tail_block = self.get_block(tail);
-
-                let tail_dir =
-                    tail_block.snake_or_err(UpdateError::TailDetached)?;
-
-                let next_tail = tail
-                    .move_towards(tail_dir)
-                    .wrap_inside(self.grid.width(), self.grid.height());
-
-                self.tail = next_tail;
-
-                self.set_block(tail, Block::Empty);
-
-                Ok(WorldUpdate::Clear {
-                    prev_block: tail_block,
-                    at: tail,
-                })
-            }
-            Block::Food => {
-                let coord = self.spawn_food();
-
-                Ok(WorldUpdate::SetBlock {
-                    block: Block::Food,
-                    at: coord,
-                })
-            }
-            Block::Snake(_) => Err(UpdateError::CollideBody),
-            Block::OutOfBound => {
-                unreachable!("No bounds in wrapping behavior, a bug")
-            }
-        }
-    }
-
-    fn spawn_food(&mut self) -> Coordinate {
-        loop {
-            let coord = self.grid.random_coordinate(&mut self.rng);
-            let current_block = self.get_block(coord);
-
-            if current_block == Block::Empty {
-                self.set_block(coord, Block::Food);
-                return coord;
-            }
-        }
-    }
-
     #[inline(always)]
     fn get_block(&self, coord: Coordinate) -> Block {
-        self.grid.get_block(coord)
+        self.grid[coord]
     }
 
     #[inline(always)]
     fn set_block<B: Into<Block>>(&mut self, coord: Coordinate, b: B) {
-        self.grid.set_block(coord, b.into());
+        self.grid[coord] = b.into()
     }
 
     #[inline]
-    fn iter_snake(&self) -> SnakeIter {
+    fn iter_snake(&self) -> SnakeIter<BB> {
         SnakeIter::new(&self.grid, self.tail)
     }
 }
 
-pub struct SnakeIter<'a> {
+pub struct SnakeIter<'a, BB: BoundingBehavior> {
     grid: &'a Grid,
     at: Coordinate,
+
+    _bounding_behavior: PhantomData<BB>,
 }
 
-impl<'a> SnakeIter<'a> {
-    pub(super) fn new(grid: &'a Grid, at: Coordinate) -> Self {
-        SnakeIter { grid, at }
+impl<'a, BB: BoundingBehavior> SnakeIter<'a, BB> {
+    pub fn new(grid: &'a Grid, at: Coordinate) -> Self {
+        SnakeIter {
+            grid,
+            at,
+            _bounding_behavior: PhantomData,
+        }
     }
 }
 
-impl<'a> Iterator for SnakeIter<'a> {
+impl<'a, BB: BoundingBehavior> Iterator for SnakeIter<'a, BB> {
     type Item = (Coordinate, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let block = self.grid.get_block(self.at);
+        let block = self.grid[self.at];
 
         match block.snake() {
             Some(dir) => {
                 let current = self.at;
-                let next = current.move_towards(dir).unwrap();
+                let next =
+                    current.move_towards(dir).inside::<BB>(&self.grid)?;
 
                 self.at = next;
 
@@ -262,14 +275,14 @@ impl<'a> Iterator for SnakeIter<'a> {
     }
 }
 
-pub enum Initializer<'a, R> {
-    WorldSize(&'a World<R>, Coordinate),
-    FoodAt(&'a World<R>, Coordinate),
-    SnakeIter(SnakeIter<'a>),
+pub enum Initializer<'a, R, BB: BoundingBehavior> {
+    WorldSize(&'a World<R, BB>, Coordinate),
+    FoodAt(&'a World<R, BB>, Coordinate),
+    SnakeIter(SnakeIter<'a, BB>),
     Done,
 }
 
-impl<'a, R: Rng> Iterator for Initializer<'a, R> {
+impl<'a, R: Rng, BB: BoundingBehavior> Iterator for Initializer<'a, R, BB> {
     type Item = WorldUpdate;
 
     fn next(&mut self) -> Option<Self::Item> {

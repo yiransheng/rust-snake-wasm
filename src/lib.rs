@@ -25,8 +25,19 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 extern crate wee_alloc;
 
+#[macro_use]
+extern crate matches;
+#[macro_use]
+extern crate itertools;
+#[macro_use]
+extern crate indoc;
 extern crate arraydeque;
+extern crate morton;
 extern crate rand;
+
+#[macro_use]
+#[cfg(test)]
+extern crate quickcheck;
 
 use alloc::boxed::Box;
 
@@ -39,19 +50,19 @@ use wasm_bindgen::prelude::*;
 mod macros;
 
 mod acceleration;
+mod canvas;
 mod constants;
 mod data;
 mod dead;
-mod renderers;
 mod system;
 mod world;
 
 use acceleration::{RenderSpeed, VariableFrame};
-use data::{Direction, Key};
+use canvas::{CanvasEnv, WorldUpdateDraw};
+use data::{Bounding, Direction, Key, Wrapping};
 use dead::Dead;
-use renderers::{CanvasEnv, WorldUpdateDraw};
-use system::Model;
-use world::{WorldBuilder, WorldUpdate};
+use system::Stateful;
+use world::{World, WorldBuilder, WorldUpdate};
 
 #[global_allocator]
 #[cfg(not(any(feature = "std", test, debug)))]
@@ -78,7 +89,7 @@ pub fn main() {
 
     let facing = Direction::East;
 
-    let world = WorldBuilder::new()
+    let world: World<SmallRng, Wrapping> = WorldBuilder::new()
         .width(64)
         .height(32)
         .set_snake(1, 1)
@@ -86,7 +97,7 @@ pub fn main() {
         .extend(facing)
         .extend(facing)
         .extend(facing)
-        .build_with_seed::<SmallRng>([123; 16]);
+        .build_with_seed([123; 16]);
 
     let game = world
         .zip_with(RenderSpeed::new(facing), VariableFrame::pack)

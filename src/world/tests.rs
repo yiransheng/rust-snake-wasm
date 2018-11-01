@@ -1,181 +1,169 @@
-mod test_utils {
-    use super::*;
-    use rand::rngs::SmallRng;
-    use rand::SeedableRng;
-    use std::fmt;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 
-    impl From<char> for Block {
-        fn from(c: char) -> Block {
-            match c {
-                'o' => Block::empty(),
-                '*' => Block::food(),
-                '>' => Block::from(Direction::East),
-                '<' => Block::from(Direction::West),
-                'v' => Block::from(Direction::South),
-                '^' => Block::from(Direction::North),
-                _ => Block::out_of_bound(),
-            }
+use super::test_utils::*;
+use super::*;
+
+use data::{Bounding, Grid, Wrapping};
+
+#[test]
+fn test_two_steps_inchworm() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let step_1 = indoc!(
+        "
+        ..........
+        .ooooo....
+        ..........
+        ....*.....
+        .........."
+    );
+    let step_2 = indoc!(
+        "
+        ..........
+        ..oooo....
+        ..........
+        ....*.....
+        .........."
+    );
+
+    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
+
+    world.step(None).unwrap();
+
+    assert_eq!(&step_1, &world.grid.to_string());
+
+    world.step(None).unwrap();
+
+    assert_eq!(&step_2, &world.grid.to_string());
+}
+
+#[test]
+fn test_eat_food() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>v.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let digesting = indoc!(
+        "
+        ..........
+        ..ooo.....
+        ....o.....
+        ....o.....
+        .........."
+    );
+
+    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
+
+    world.step(None).unwrap();
+    world.step(None).unwrap();
+    world.step(None).unwrap();
+
+    assert_eq!(&digesting, &world.grid.to_string());
+
+    let update = world.step(None).unwrap().unwrap();
+
+    assert_matches!(update, WorldUpdate::SetBlock{ at: _, block: Block::Food });
+
+    // erase food, as it's generated randomly, no assumptions on its position
+    match update {
+        WorldUpdate::SetBlock { at, .. } => {
+            assert_eq!(world.grid[at], Block::Food);
         }
-    }
-
-    impl fmt::Display for Block {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let tile = (*self).into();
-            match tile {
-                Tile::Empty => '.'.fmt(f),
-                Tile::Snake => 'o'.fmt(f),
-                Tile::Food => '*'.fmt(f),
-                Tile::OutOfBound => "".fmt(f),
-            }
-        }
-    }
-
-    impl World<SmallRng> {
-        #[allow(dead_code)]
-        pub fn from_ascii(s: &str) -> Self {
-            let height = s.lines().count() as u32;
-            let width = s.lines().next().unwrap().chars().count() as u32;
-
-            let mut grid = Grid::empty(width, height);
-
-            for (y, line) in s.lines().enumerate() {
-                for (x, c) in line.chars().enumerate() {
-                    grid.set_block(Coordinate::from_usize(x, y), c.into());
-                }
-            }
-
-            let mut head = Coordinate { x: 0, y: 0 };
-            let mut tail = Coordinate { x: 0, y: 0 };
-
-            for x in 0..grid.width {
-                for y in 0..grid.height {
-                    let coord = Coordinate { x, y };
-                    let b = grid.get_block(coord);
-                    if b.is_snake() {
-                        if grid.get_prev_snake_block(coord).is_none() {
-                            tail = coord;
-                        }
-                        if grid.get_next_snake_block(coord).is_none() {
-                            head = coord;
-                        }
-                    }
-                }
-            }
-
-            let initial_snake: Vec<(Coordinate, Direction)>;
-
-            {
-                let iter = SnakeIter::new(&grid, tail);
-
-                initial_snake = iter.collect();
-            }
-
-            World {
-                grid,
-                head,
-                tail,
-                // reading from ascii can skip initial setup
-                rng: SmallRng::from_seed([0; 16]),
-
-                initial_snake,
-            }
-        }
-    }
-
-    impl<R> fmt::Display for World<R> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            for y in 0..self.grid.height {
-                for x in 0..self.grid.width {
-                    let coord = Coordinate { x, y };
-                    write!(f, "{}", self.grid.get_block(coord))?;
-                }
-                write!(f, "\n")?;
-            }
-            Ok(())
-        }
+        _ => {}
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::test_utils::*;
-    use super::*;
-    use rand::rngs::SmallRng;
-    use std::marker::PhantomData;
+#[test]
+fn test_wrapping() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let afterwards = indoc!(
+        "
+        ..........
+        o......ooo
+        ..........
+        ....*.....
+        .........."
+    );
 
-    struct MockSink<T> {
-        _marker: PhantomData<T>,
+    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
+
+    for _ in 0..12 {
+        world.step(None).unwrap();
     }
 
-    impl<T> RenderSink<T> for MockSink<T> {
-        fn is_ready(&self) -> bool {
-            true
-        }
-        fn push(&mut self, x: RenderUnit<T>) {}
-    }
+    assert_eq!(&afterwards, &world.grid.to_string());
+}
 
-    #[test]
-    fn test_game() {
-        let world = "oooooooooo
-oooooooooo
-o>>>>ooooo
-oooooooooo
-oooo*ooooo
-oooooooooo";
-        let mut world = World::from_ascii(world);
-        let mut q = MockSink {
-            _marker: PhantomData,
-        };
+#[test]
+fn test_bounding() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let afterwards = indoc!(
+        "
+        ..........
+        ......oooo
+        ..........
+        ....*.....
+        .........."
+    );
 
-        {
-            let mut update = |n: usize, dir: Direction| {
-                for _ in 0..n {
-                    world.step_update(&mut q);
-                }
-                world.set_direction(dir);
-            };
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
 
-            // east 3
-            // turn south
-            update(3, Direction::South);
-            // south 2
-            // turn west
-            update(2, Direction::West);
-            // west 3
-            update(3, Direction::West);
-        }
+    while let Ok(_) = world.step(None) {}
 
-        let final_state = "..........
-..........
-..........
-.......o..
-....oooo..
-..........
-";
+    assert_matches!(world.step(None), Err(UpdateError::OutOfBound));
 
-        // foot eaten
-        // replace food (*) with empty (.) before states comparision
-        assert_eq!(final_state, &world.to_string().replace('*', "."));
-    }
+    assert_eq!(&afterwards, &world.grid.to_string());
+}
 
-    #[test]
-    fn test_builder() {
-        let world = WorldBuilder::new()
-            .width(10)
-            .height(5)
-            .set_snake(1, 1)
-            .extend(Direction::East)
-            .extend(Direction::East)
-            .extend(Direction::East)
-            .extend(Direction::East)
-            .build_with_seed::<SmallRng>([123; 16]);
-        let final_state = "..........
-.oooo.....
-..........
-..........
-..........
-";
+#[test]
+fn test_death() {
+    let snake_string = indoc!(
+        "
+        ..........
+        >>>>>>v...
+        ......v...
+        ..^<<<<...
+        .........*"
+    );
+    let afterwards = indoc!(
+        "
+        ..........
+        .oooooo...
+        ..o...o...
+        ..ooooo...
+        .........*"
+    );
 
-        assert_eq!(final_state, &world.to_string());
-    }
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    while let Ok(_) = world.step(None) {}
+
+    assert_matches!(world.step(None), Err(UpdateError::CollideBody));
+
+    assert_eq!(&afterwards, &world.grid.to_string());
 }
