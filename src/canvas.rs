@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use constants::{ANIMATION_FRAME_COUNT, TILE_SIZE};
-use data::{Block, Direction, Natnum};
+use data::{Block, Direction, SmallNat};
 use system::{Color, DrawGrid, IncrRender, UnitInterval};
 use world::WorldUpdate;
 
@@ -47,7 +47,12 @@ impl CanvasEnv {
 }
 
 impl DrawGrid for CanvasEnv {
-    fn setup(&mut self, tile_size: Natnum, width: Natnum, height: Natnum) {
+    fn setup(
+        &mut self,
+        tile_size: SmallNat,
+        width: SmallNat,
+        height: SmallNat,
+    ) {
         self.tile_size = tile_size as f64;
 
         let width_pixel: u32 = (width * tile_size) as u32;
@@ -95,8 +100,8 @@ impl DrawGrid for CanvasEnv {
     #[inline(always)]
     fn fill_tile(
         &mut self,
-        x: Natnum,
-        y: Natnum,
+        x: SmallNat,
+        y: SmallNat,
         dir: Direction,
         size: UnitInterval,
     ) {
@@ -108,8 +113,8 @@ impl DrawGrid for CanvasEnv {
     #[inline(always)]
     fn clear_tile(
         &mut self,
-        x: Natnum,
-        y: Natnum,
+        x: SmallNat,
+        y: SmallNat,
         dir: Direction,
         size: UnitInterval,
     ) {
@@ -119,7 +124,7 @@ impl DrawGrid for CanvasEnv {
         self.gc.stroke_rect(x, y, self.tile_size, self.tile_size);
     }
 
-    fn circle(&mut self, x: Natnum, y: Natnum, radius: UnitInterval) {
+    fn circle(&mut self, x: SmallNat, y: SmallNat, radius: UnitInterval) {
         let x = x as f64 * self.tile_size;
         let y = y as f64 * self.tile_size;
 
@@ -144,8 +149,8 @@ impl DrawGrid for CanvasEnv {
 impl CanvasEnv {
     fn partial_tile(
         &mut self,
-        x: Natnum,
-        y: Natnum,
+        x: SmallNat,
+        y: SmallNat,
         dir: Direction,
         size: UnitInterval,
     ) -> (f64, f64, f64, f64) {
@@ -244,7 +249,7 @@ where
         match self.update {
             WorldUpdate::SetWorldSize(w, h) => {
                 env.clear();
-                env.setup(TILE_SIZE as Natnum, w, h);
+                env.setup(TILE_SIZE as SmallNat, w, h);
                 self.total_frame
             }
             WorldUpdate::Clear { prev_block, at } => {

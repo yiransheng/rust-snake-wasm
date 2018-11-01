@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use rand::Rng;
 
 use data::{
-    Block, BoundingBehavior, Coordinate, Direction, Grid, Natnum, Wrapping,
+    Block, BoundingBehavior, Coordinate, Direction, Grid, SmallNat, Wrapping,
 };
 use system::{GameOver, Stateful};
 
@@ -19,7 +19,7 @@ type Result<T> = ::std::result::Result<T, UpdateError>;
 pub enum WorldUpdate {
     SetBlock { block: Block, at: Coordinate },
     Clear { prev_block: Block, at: Coordinate },
-    SetWorldSize(Natnum, Natnum),
+    SetWorldSize(SmallNat, SmallNat),
     Dead,
 }
 

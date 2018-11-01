@@ -5,15 +5,15 @@ use std::marker::PhantomData;
 use rand::{Rng, SeedableRng};
 
 use data::{
-    Block, BoundingBehavior, Coordinate, Direction, Grid, Natnum, Wrapping,
+    Block, BoundingBehavior, Coordinate, Direction, Grid, SmallNat, Wrapping,
 };
 
 use super::{SnakeIter, SnakeState, World};
 
 #[derive(Copy, Clone)]
 pub struct WorldBuilder<BB: BoundingBehavior = Wrapping> {
-    width: Natnum,
-    height: Natnum,
+    width: SmallNat,
+    height: SmallNat,
 
     _bounding_behavior: PhantomData<BB>,
 }
@@ -27,15 +27,15 @@ impl<BB: BoundingBehavior> WorldBuilder<BB> {
             _bounding_behavior: PhantomData,
         }
     }
-    pub fn width<'a>(&'a mut self, width: Natnum) -> &'a mut Self {
+    pub fn width<'a>(&'a mut self, width: SmallNat) -> &'a mut Self {
         self.width = width;
         self
     }
-    pub fn height(&mut self, height: Natnum) -> &mut Self {
+    pub fn height(&mut self, height: SmallNat) -> &mut Self {
         self.height = height;
         self
     }
-    pub fn set_snake(self, x: Natnum, y: Natnum) -> SnakeBuilder<BB> {
+    pub fn set_snake(self, x: SmallNat, y: SmallNat) -> SnakeBuilder<BB> {
         assert!(x < self.width && y < self.height);
 
         let grid = Grid::empty(self.width, self.height);

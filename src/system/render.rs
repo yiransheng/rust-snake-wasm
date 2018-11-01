@@ -1,4 +1,4 @@
-use data::Natnum;
+use data::SmallNat;
 
 use std::ops::Range;
 use std::ops::{Generator, GeneratorState};
@@ -80,27 +80,27 @@ impl Color {
 }
 
 pub trait DrawGrid {
-    fn setup(&mut self, tile_size: Natnum, width: Natnum, height: Natnum);
+    fn setup(&mut self, tile_size: SmallNat, width: SmallNat, height: SmallNat);
 
     fn clear(&mut self);
 
     // returns current fill color
     fn set_fill_color(&mut self, color: Color) -> Color;
 
-    fn circle(&mut self, x: Natnum, y: Natnum, radius: UnitInterval);
+    fn circle(&mut self, x: SmallNat, y: SmallNat, radius: UnitInterval);
 
     fn fill_tile(
         &mut self,
-        x: Natnum,
-        y: Natnum,
+        x: SmallNat,
+        y: SmallNat,
         dir: Direction,
         size: UnitInterval,
     );
 
     fn clear_tile(
         &mut self,
-        x: Natnum,
-        y: Natnum,
+        x: SmallNat,
+        y: SmallNat,
         dir: Direction,
         size: UnitInterval,
     );

@@ -73,12 +73,12 @@ impl<T> Block<T> {
     }
 }
 
-pub type Natnum = u16;
+pub type SmallNat = u16;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Coordinate {
-    pub x: Natnum,
-    pub y: Natnum,
+    pub x: SmallNat,
+    pub y: SmallNat,
 }
 
 impl Coordinate {
@@ -119,7 +119,7 @@ pub struct UncheckedCoordinate {
 }
 impl UncheckedCoordinate {
     #[inline(always)]
-    fn new(x: Natnum, y: Natnum) -> Self {
+    fn new(x: SmallNat, y: SmallNat) -> Self {
         UncheckedCoordinate {
             inner: Coordinate { x, y },
         }
@@ -127,8 +127,8 @@ impl UncheckedCoordinate {
 
     pub fn bound_inside(
         self,
-        bound_width: Natnum,
-        bound_height: Natnum,
+        bound_width: SmallNat,
+        bound_height: SmallNat,
     ) -> Option<Coordinate> {
         if self.inner.x < bound_width && self.inner.y < bound_height {
             Some(self.inner)
@@ -139,8 +139,8 @@ impl UncheckedCoordinate {
 
     pub fn wrap_inside(
         self,
-        bound_width: Natnum,
-        bound_height: Natnum,
+        bound_width: SmallNat,
+        bound_height: SmallNat,
     ) -> Coordinate {
         debug_assert!(bound_width > 0 && bound_height > 0);
 
@@ -161,7 +161,7 @@ impl UncheckedCoordinate {
     }
 }
 
-type BoundFn<T> = fn(UncheckedCoordinate, Natnum, Natnum) -> T;
+type BoundFn<T> = fn(UncheckedCoordinate, SmallNat, SmallNat) -> T;
 
 /// Marker trait to decide how to unwrap an UncheckedCoordinate
 pub trait BoundingBehavior: Copy {
@@ -188,12 +188,12 @@ impl BoundingBehavior for Bounding {
 
 pub struct Grid {
     blocks: Vec<Block>,
-    width: Natnum,
-    height: Natnum,
+    width: SmallNat,
+    height: SmallNat,
 }
 
 impl Grid {
-    pub fn empty(width: Natnum, height: Natnum) -> Self {
+    pub fn empty(width: SmallNat, height: SmallNat) -> Self {
         let width = max(1, width);
         let height = max(1, height);
 
@@ -218,11 +218,11 @@ impl Grid {
     }
 
     #[inline(always)]
-    pub fn width(&self) -> Natnum {
+    pub fn width(&self) -> SmallNat {
         self.width
     }
     #[inline(always)]
-    pub fn height(&self) -> Natnum {
+    pub fn height(&self) -> SmallNat {
         self.height
     }
 
@@ -300,8 +300,8 @@ impl FromIterator<(Coordinate, Block)> for Grid {
         T: IntoIterator<Item = (Coordinate, Block)>,
     {
         let mut blocks = vec![Block::Empty];
-        let mut x_max: Natnum = 0;
-        let mut y_max: Natnum = 0;
+        let mut x_max: SmallNat = 0;
+        let mut y_max: SmallNat = 0;
 
         for (coord, block) in iter {
             x_max = max(x_max, coord.x);
@@ -339,18 +339,18 @@ mod tests {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    const SIZE_LIMIT: Natnum = 255;
+    const SIZE_LIMIT: SmallNat = 255;
 
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     struct Bound {
-        width: Natnum,
-        height: Natnum,
+        width: SmallNat,
+        height: SmallNat,
     }
 
     impl Arbitrary for Bound {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let w = Natnum::arbitrary(g) % SIZE_LIMIT;
-            let h = Natnum::arbitrary(g) % SIZE_LIMIT;
+            let w = SmallNat::arbitrary(g) % SIZE_LIMIT;
+            let h = SmallNat::arbitrary(g) % SIZE_LIMIT;
 
             Bound {
                 width: max(w, 1),
@@ -373,8 +373,8 @@ mod tests {
     impl Arbitrary for Coordinate {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Coordinate {
-                x: Natnum::arbitrary(g) % SIZE_LIMIT,
-                y: Natnum::arbitrary(g) % SIZE_LIMIT,
+                x: SmallNat::arbitrary(g) % SIZE_LIMIT,
+                y: SmallNat::arbitrary(g) % SIZE_LIMIT,
             }
         }
     }
