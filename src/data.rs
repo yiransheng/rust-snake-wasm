@@ -151,6 +151,39 @@ impl UncheckedCoordinate {
             y: y.wrapping_add(bound_height) % bound_height,
         }
     }
+
+    #[inline(always)]
+    pub fn inside<B: BoundingBehavior>(
+        self,
+        grid: &Grid,
+    ) -> Option<Coordinate> {
+        B::bound_fn(self, grid.width(), grid.height()).into()
+    }
+}
+
+type BoundFn<T> = fn(UncheckedCoordinate, Natnum, Natnum) -> T;
+
+/// Marker trait to decide how to unwrap an UncheckedCoordinate
+pub trait BoundingBehavior: Copy {
+    type Return: Into<Option<Coordinate>>;
+
+    const bound_fn: BoundFn<Self::Return>;
+}
+
+#[derive(Copy, Clone)]
+pub struct Wrapping;
+#[derive(Copy, Clone)]
+pub struct Bounding;
+
+impl BoundingBehavior for Wrapping {
+    type Return = Coordinate;
+
+    const bound_fn: BoundFn<Coordinate> = UncheckedCoordinate::wrap_inside;
+}
+impl BoundingBehavior for Bounding {
+    type Return = Option<Coordinate>;
+    const bound_fn: BoundFn<Option<Coordinate>> =
+        UncheckedCoordinate::bound_inside;
 }
 
 pub struct Grid {

@@ -1,7 +1,11 @@
 use alloc::vec::Vec;
+use std::marker::PhantomData;
+
 use rand::Rng;
 
-use data::{Block, Coordinate, Direction, Grid, Natnum};
+use data::{
+    Block, BoundingBehavior, Coordinate, Direction, Grid, Natnum, Wrapping,
+};
 use system::{GameOver, Model};
 
 pub use self::builder::WorldBuilder;
@@ -39,7 +43,7 @@ enum SnakeState {
     Consuming(Block),
 }
 
-pub struct World<R> {
+pub struct World<R, BB: BoundingBehavior = Wrapping> {
     grid: Grid,
     state: SnakeState,
 
@@ -48,12 +52,16 @@ pub struct World<R> {
 
     initial_snake: Vec<(Coordinate, Direction)>,
     rng: R,
+
+    _bounding_behavior: PhantomData<BB>,
 }
 
-impl<'a, R: Rng + 'a> Model<'a> for World<R> {
+impl<'a, R: Rng + 'a, BB: BoundingBehavior + 'static> Model<'a>
+    for World<R, BB>
+{
     type Cmd = Direction;
     type Update = WorldUpdate;
-    type State = Initializer<'a, R>;
+    type State = Initializer<'a, R, BB>;
 
     type Error = UpdateError;
 
@@ -81,7 +89,7 @@ impl<'a, R: Rng + 'a> Model<'a> for World<R> {
     }
 }
 
-impl<R: Rng> World<R> {
+impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
     fn step(&mut self, cmd: Option<Direction>) -> Result<Option<WorldUpdate>> {
         if let Some(dir) = cmd {
             self.set_direction(dir)?;
@@ -125,7 +133,8 @@ impl<R: Rng> World<R> {
         let next_head = self
             .head
             .move_towards(head_dir)
-            .wrap_inside(self.grid.width(), self.grid.height());
+            .inside::<BB>(&self.grid)
+            .ok_or(UpdateError::OutOfBound)?;
 
         let next_head_block = self.get_block(next_head);
 
@@ -136,9 +145,7 @@ impl<R: Rng> World<R> {
                 Ok(next_head_block)
             }
             Block::Snake(_) => Err(UpdateError::CollideBody),
-            Block::OutOfBound => {
-                unreachable!("No bounds in wrapping behavior, a bug")
-            }
+            Block::OutOfBound => Err(UpdateError::OutOfBound),
         }
     }
 
@@ -153,7 +160,8 @@ impl<R: Rng> World<R> {
 
                 let next_tail = tail
                     .move_towards(tail_dir)
-                    .wrap_inside(self.grid.width(), self.grid.height());
+                    .inside::<BB>(&self.grid)
+                    .ok_or(UpdateError::OutOfBound)?;
 
                 self.tail = next_tail;
 
@@ -173,9 +181,7 @@ impl<R: Rng> World<R> {
                 })
             }
             Block::Snake(_) => Err(UpdateError::CollideBody),
-            Block::OutOfBound => {
-                unreachable!("No bounds in wrapping behavior, a bug")
-            }
+            Block::OutOfBound => Err(UpdateError::OutOfBound),
         }
     }
 
@@ -222,23 +228,29 @@ impl<R: Rng> World<R> {
     }
 
     #[inline]
-    fn iter_snake(&self) -> SnakeIter {
+    fn iter_snake(&self) -> SnakeIter<BB> {
         SnakeIter::new(&self.grid, self.tail)
     }
 }
 
-pub struct SnakeIter<'a> {
+pub struct SnakeIter<'a, BB: BoundingBehavior> {
     grid: &'a Grid,
     at: Coordinate,
+
+    _bounding_behavior: PhantomData<BB>,
 }
 
-impl<'a> SnakeIter<'a> {
+impl<'a, BB: BoundingBehavior> SnakeIter<'a, BB> {
     pub(super) fn new(grid: &'a Grid, at: Coordinate) -> Self {
-        SnakeIter { grid, at }
+        SnakeIter {
+            grid,
+            at,
+            _bounding_behavior: PhantomData,
+        }
     }
 }
 
-impl<'a> Iterator for SnakeIter<'a> {
+impl<'a, BB: BoundingBehavior> Iterator for SnakeIter<'a, BB> {
     type Item = (Coordinate, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -247,9 +259,8 @@ impl<'a> Iterator for SnakeIter<'a> {
         match block.snake() {
             Some(dir) => {
                 let current = self.at;
-                let next = current
-                    .move_towards(dir)
-                    .wrap_inside(self.grid.width(), self.grid.height());
+                let next =
+                    current.move_towards(dir).inside::<BB>(&self.grid)?;
 
                 self.at = next;
 
@@ -260,14 +271,14 @@ impl<'a> Iterator for SnakeIter<'a> {
     }
 }
 
-pub enum Initializer<'a, R> {
-    WorldSize(&'a World<R>, Coordinate),
-    FoodAt(&'a World<R>, Coordinate),
-    SnakeIter(SnakeIter<'a>),
+pub enum Initializer<'a, R, BB: BoundingBehavior> {
+    WorldSize(&'a World<R, BB>, Coordinate),
+    FoodAt(&'a World<R, BB>, Coordinate),
+    SnakeIter(SnakeIter<'a, BB>),
     Done,
 }
 
-impl<'a, R: Rng> Iterator for Initializer<'a, R> {
+impl<'a, R: Rng, BB: BoundingBehavior> Iterator for Initializer<'a, R, BB> {
     type Item = WorldUpdate;
 
     fn next(&mut self) -> Option<Self::Item> {

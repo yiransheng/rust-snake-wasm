@@ -55,10 +55,10 @@ mod world;
 
 use acceleration::{RenderSpeed, VariableFrame};
 use canvas::{CanvasEnv, WorldUpdateDraw};
-use data::{Direction, Key};
+use data::{Bounding, Direction, Key, Wrapping};
 use dead::Dead;
 use system::Model;
-use world::{WorldBuilder, WorldUpdate};
+use world::{World, WorldBuilder, WorldUpdate};
 
 #[global_allocator]
 #[cfg(not(any(feature = "std", test, debug)))]
@@ -85,7 +85,7 @@ pub fn main() {
 
     let facing = Direction::East;
 
-    let world = WorldBuilder::new()
+    let world: World<SmallRng, Wrapping> = WorldBuilder::new()
         .width(64)
         .height(32)
         .set_snake(1, 1)
@@ -93,7 +93,7 @@ pub fn main() {
         .extend(facing)
         .extend(facing)
         .extend(facing)
-        .build_with_seed::<SmallRng>([123; 16]);
+        .build_with_seed([123; 16]);
 
     let game = world
         .zip_with(RenderSpeed::new(facing), VariableFrame::pack)
