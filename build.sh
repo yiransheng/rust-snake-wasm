@@ -23,6 +23,10 @@ else
   wasm-bindgen ./target/wasm32-unknown-unknown/debug/snake_wasm.wasm --out-dir .
 fi
 
-# wasm-opt -Os ./docs/*.wasm
 
 yarn build
+
+
+OUT_WASM=$(find ./docs  -name \*.wasm)
+wasm-opt -Os $OUT_WASM -o optimized.wasm
+mv optimized.wasm $OUT_WASM
