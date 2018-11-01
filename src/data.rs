@@ -392,7 +392,7 @@ mod tests {
         assert_eq!(::std::mem::size_of::<Block>(), 1,)
     }
     #[test]
-    fn test_uncheck_coordinate_generic_inside() {
+    fn test_unchecked_coordinate_generic_inside() {
         let orig = Coordinate { x: 0, y: 0 };
         let unchecked = orig.move_towards(Direction::West);
 
