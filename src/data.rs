@@ -100,6 +100,13 @@ impl Coordinate {
         let (x, y) = deinterleave_morton(n as u32);
         Coordinate { x, y }
     }
+
+    pub fn from_usizes(x: usize, y: usize) -> Self {
+        Coordinate {
+            x: x as SmallNat,
+            y: y as SmallNat,
+        }
+    }
 }
 
 impl PartialOrd for Coordinate {

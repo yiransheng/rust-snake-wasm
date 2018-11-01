@@ -11,6 +11,8 @@ use system::{GameOver, Stateful};
 pub use self::builder::WorldBuilder;
 
 mod builder;
+#[cfg(test)]
+mod test_utils;
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
@@ -241,7 +243,7 @@ pub struct SnakeIter<'a, BB: BoundingBehavior> {
 }
 
 impl<'a, BB: BoundingBehavior> SnakeIter<'a, BB> {
-    pub(super) fn new(grid: &'a Grid, at: Coordinate) -> Self {
+    pub fn new(grid: &'a Grid, at: Coordinate) -> Self {
         SnakeIter {
             grid,
             at,
