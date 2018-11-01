@@ -20,7 +20,7 @@ impl Into<GameOver> for Void {
     }
 }
 
-pub trait Model<'m> {
+pub trait Stateful<'m> {
     type Cmd;
     type Init: IntoIterator<Item = Self::Update> + 'm;
     type Update;
@@ -45,7 +45,7 @@ pub trait Model<'m> {
 
     fn zip_with<T, R, F>(self, other: R, f: F) -> ZipWith<Self, R, F>
     where
-        R: Model<'m, Cmd = Self::Cmd, Error = Void>,
+        R: Stateful<'m, Cmd = Self::Cmd, Error = Void>,
         F: Fn((Self::Update, R::Update)) -> T + 'm,
         Self::Cmd: Copy,
         Self: Sized,
@@ -60,7 +60,7 @@ pub trait Model<'m> {
     fn alternating_after<C, B>(self, other: B) -> Alternating<Self, B, C>
     where
         Self: Sized,
-        B: Model<'m, Update = Self::Update>,
+        B: Stateful<'m, Update = Self::Update>,
         C: Into<Option<Self::Cmd>> + Into<Option<B::Cmd>>,
     {
         Alternating {
@@ -74,7 +74,7 @@ pub trait Model<'m> {
     fn alternating<C, B>(self, other: B) -> Alternating<Self, B, C>
     where
         Self: Sized,
-        B: Model<'m, Update = Self::Update>,
+        B: Stateful<'m, Update = Self::Update>,
         C: Into<Option<Self::Cmd>> + Into<Option<B::Cmd>>,
     {
         Alternating {
@@ -92,10 +92,10 @@ pub struct ZipWith<L, R, F> {
     f: F,
 }
 
-impl<'m, L, R, T, F> Model<'m> for ZipWith<L, R, F>
+impl<'m, L, R, T, F> Stateful<'m> for ZipWith<L, R, F>
 where
-    L: Model<'m>,
-    R: Model<'m, Cmd = L::Cmd, Error = Void>,
+    L: Stateful<'m>,
+    R: Stateful<'m, Cmd = L::Cmd, Error = Void>,
     F: Fn((L::Update, R::Update)) -> T + 'm,
     L::Cmd: Copy,
 {
@@ -181,10 +181,10 @@ impl<A, B, C> Alternating<A, B, C> {
     }
 }
 
-impl<'m, Cmd, A, B> Model<'m> for Alternating<A, B, Cmd>
+impl<'m, Cmd, A, B> Stateful<'m> for Alternating<A, B, Cmd>
 where
-    A: Model<'m>,
-    B: Model<'m, Update = A::Update>,
+    A: Stateful<'m>,
+    B: Stateful<'m, Update = A::Update>,
     Cmd: Into<Option<A::Cmd>> + Into<Option<B::Cmd>>,
 {
     type Cmd = Cmd;
@@ -237,7 +237,7 @@ pub struct Game<M, E> {
 }
 impl<M, Cmd, U, E> Game<M, E>
 where
-    M: for<'m> Model<'m, Update = U, Cmd = Cmd>,
+    M: for<'m> Stateful<'m, Update = U, Cmd = Cmd>,
     E: 'static,
 {
     #[allow(dead_code)]

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use data::Key;
-use system::{GameOver, Model};
+use system::{GameOver, Stateful};
 use world::WorldUpdate;
 
 pub struct StartGame;
@@ -27,7 +27,7 @@ impl<U> Dead<U> {
     }
 }
 
-impl<'m, U> Model<'m> for Dead<U>
+impl<'m, U> Stateful<'m> for Dead<U>
 where
     U: 'static + From<WorldUpdate>,
 {

@@ -3,7 +3,7 @@ use void::Void;
 use canvas::{CanvasEnv, WorldUpdateDraw};
 use constants::ANIMATION_FRAME_COUNT;
 use data::Direction;
-use system::{IncrRender, Model};
+use system::{IncrRender, Stateful};
 use world::WorldUpdate;
 
 pub struct VariableFrame<T = WorldUpdate> {
@@ -69,7 +69,7 @@ impl RenderSpeed {
     }
 }
 
-impl<'m> Model<'m> for RenderSpeed {
+impl<'m> Stateful<'m> for RenderSpeed {
     type Cmd = Direction;
     type Init = Forever<u8>;
     type Update = u8;

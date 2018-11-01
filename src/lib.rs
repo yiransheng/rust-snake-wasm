@@ -57,7 +57,7 @@ use acceleration::{RenderSpeed, VariableFrame};
 use canvas::{CanvasEnv, WorldUpdateDraw};
 use data::{Bounding, Direction, Key, Wrapping};
 use dead::Dead;
-use system::Model;
+use system::Stateful;
 use world::{World, WorldBuilder, WorldUpdate};
 
 #[global_allocator]

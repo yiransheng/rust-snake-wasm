@@ -6,7 +6,7 @@ use rand::Rng;
 use data::{
     Block, BoundingBehavior, Coordinate, Direction, Grid, Natnum, Wrapping,
 };
-use system::{GameOver, Model};
+use system::{GameOver, Stateful};
 
 pub use self::builder::WorldBuilder;
 
@@ -56,7 +56,7 @@ pub struct World<R, BB: BoundingBehavior = Wrapping> {
     _bounding_behavior: PhantomData<BB>,
 }
 
-impl<'a, R: Rng + 'a, BB: BoundingBehavior + 'static> Model<'a>
+impl<'a, R: Rng + 'a, BB: BoundingBehavior + 'static> Stateful<'a>
     for World<R, BB>
 {
     type Cmd = Direction;
