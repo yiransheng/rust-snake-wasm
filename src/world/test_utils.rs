@@ -1,3 +1,4 @@
+use std::fmt;
 use std::marker::PhantomData;
 
 use rand::rngs::SmallRng;
@@ -12,7 +13,6 @@ impl<BB: BoundingBehavior> World<SmallRng, BB> {
     pub fn from_ascii(string: &str) -> Self {
         let grid = chars_from_ascii_grid(string)
             .map(|(coord, c)| match c {
-                'o' => (coord, Block::Empty),
                 '*' => (coord, Block::Food),
                 '>' => (coord, Block::Snake(Direction::East)),
                 '<' => (coord, Block::Snake(Direction::West)),
@@ -47,25 +47,57 @@ impl<BB: BoundingBehavior> World<SmallRng, BB> {
     }
 }
 
+impl fmt::Display for Block {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Block::Empty => '.'.fmt(f),
+            Block::Snake(_) => 'o'.fmt(f),
+            Block::Food => '*'.fmt(f),
+            Block::OutOfBound => "".fmt(f),
+        }
+    }
+}
+
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let width = self.width();
+        let height = self.height();
+
+        for y in 0..height {
+            for x in 0..width {
+                let coord = Coordinate { x, y };
+                write!(f, "{}", self[coord])?;
+            }
+            if y < height - 1 {
+                write!(f, "\n")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 pub fn chars_from_ascii_grid<'a>(
     string: &'a str,
 ) -> impl Iterator<Item = (Coordinate, char)> + 'a {
     string
         .lines()
         .filter(|line| !line.is_empty())
-        .scan(0, |width, line| {
+        .enumerate()
+        .scan(0, |width, (line_no, line)| {
             let line_len = line.len();
 
             if *width == 0 || line_len == *width {
                 *width = line_len;
-                Some(line)
+                Some((line_no, line))
             } else {
                 None
             }
         })
-        .flat_map(|line| line.chars().enumerate())
-        .enumerate()
-        .map(|(line, (col, ch))| (Coordinate::from_usizes(col, line), ch))
+        .flat_map(|(line_no, line)| {
+            line.chars().enumerate().map(move |(col, ch)| {
+                (Coordinate::from_usizes(col, line_no), ch)
+            })
+        })
 }
 
 pub fn find_snake_tail<BB: BoundingBehavior>(
@@ -75,20 +107,32 @@ pub fn find_snake_tail<BB: BoundingBehavior>(
         let coord = Coordinate { x, y };
         let block = grid[coord];
 
-        let dir = block.snake().unwrap_or({
-            continue;
-        });
-        let next_block =
-            coord.move_towards(dir).inside::<BB>(grid).map(|c| grid[c]);
+        let dir = match block {
+            Block::Snake(dir) => dir,
+            _ => continue,
+        };
+
+        let next_block = coord
+            .move_towards(dir)
+            .inside::<BB>(grid)
+            .map(|c| grid[c])
+            .unwrap_or(Block::OutOfBound);
 
         let prev_block = coord
             .move_towards(dir.opposite())
             .inside::<BB>(grid)
-            .map(|c| grid[c]);
+            .map(|c| grid[c])
+            .unwrap_or(Block::OutOfBound);
 
         // is tail
         match (prev_block, next_block) {
-            (Some(Block::Empty), Some(Block::Snake(_))) => {
+            (Block::Empty, Block::Snake(_)) => {
+                return Some(coord);
+            }
+            (Block::OutOfBound, Block::Snake(_)) => {
+                return Some(coord);
+            }
+            (Block::Food, Block::Snake(_)) => {
                 return Some(coord);
             }
             _ => {}

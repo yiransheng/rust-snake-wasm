@@ -26,7 +26,11 @@ extern crate web_sys;
 extern crate wee_alloc;
 
 #[macro_use]
+extern crate matches;
+#[macro_use]
 extern crate itertools;
+#[macro_use]
+extern crate indoc;
 extern crate arraydeque;
 extern crate morton;
 extern crate rand;

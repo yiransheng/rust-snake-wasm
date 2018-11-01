@@ -13,6 +13,8 @@ pub use self::builder::WorldBuilder;
 mod builder;
 #[cfg(test)]
 mod test_utils;
+#[cfg(test)]
+mod tests;
 
 type Result<T> = ::std::result::Result<T, UpdateError>;
 
