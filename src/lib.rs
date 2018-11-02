@@ -1,16 +1,5 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![feature(
-    alloc,
-    core_intrinsics,
-    core_panic_info,
-    panic_implementation,
-    lang_items,
-    alloc_error_handler,
-    type_ascription,
-    arbitrary_self_types,
-    generators,
-    generator_trait
-)]
+#![feature(alloc, arbitrary_self_types, generators, generator_trait)]
 
 #[cfg(not(any(feature = "std", test, debug)))]
 extern crate core as std;
