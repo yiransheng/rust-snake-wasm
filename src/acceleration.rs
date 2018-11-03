@@ -7,8 +7,8 @@ use system::{IncrRender, Stateful};
 use world::WorldUpdate;
 
 pub struct VariableFrame<T = WorldUpdate> {
-    update: T,
-    frame_count: u8,
+    pub update: T,
+    pub frame_count: u8,
 }
 impl Into<WorldUpdate> for VariableFrame<WorldUpdate> {
     fn into(self) -> WorldUpdate {

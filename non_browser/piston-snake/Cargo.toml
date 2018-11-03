@@ -1,0 +1,14 @@
+[package]
+name = "piston-snake"
+version = "0.1.0"
+authors = ["Yiran Sheng <shengyiran@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+piston_window = "0.74.0"
+vec_map = "0.8.1"
+
+[dependencies.snake-wasm]
+path = "../../"
+default-features = false
+features = ["std"]

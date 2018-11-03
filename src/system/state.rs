@@ -141,6 +141,7 @@ where
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Either<A, B> {
     Left(A),
     Right(B),
@@ -238,9 +239,7 @@ pub struct Game<M, E> {
 impl<M, Cmd, U, E> Game<M, E>
 where
     M: for<'m> Stateful<'m, Update = U, Cmd = Cmd>,
-    E: 'static,
 {
-    #[allow(dead_code)]
     pub fn new_game<R, Input>(
         self: Box<Self>,
     ) -> (
@@ -250,7 +249,8 @@ where
     where
         E: DrawGrid,
         R: IncrRender<Env = E, Patch = U>,
-        Input: Into<Option<Cmd>> + Copy + 'static + Eq + ::std::fmt::Debug,
+        Input: Into<Option<Cmd>> + Copy + 'static,
+        Cmd: Eq,
     {
         let this = Box::leak(self);
         let buf = Rc::new(RefCell::new(InputDblBuffer::new()));

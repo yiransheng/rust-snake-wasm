@@ -51,7 +51,7 @@ impl UnitInterval {
     }
     #[inline(always)]
     #[allow(dead_code)]
-    pub fn supplement(self) -> Self {
+    pub fn complement(self) -> Self {
         UnitInterval(1.0 - self.0)
     }
 }
