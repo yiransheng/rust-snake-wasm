@@ -39,8 +39,8 @@ fn create_window() -> PistonWindow {
             .build()
             .unwrap();
 
-    window.set_max_fps(30);
-    window.set_ups(30);
+    window.set_max_fps(60);
+    window.set_ups(60);
 
     window
 }
