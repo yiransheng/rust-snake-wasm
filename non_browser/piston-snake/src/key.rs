@@ -1,6 +1,6 @@
 use piston_window::Key;
 use snake_wasm::data::Direction;
-use snake_wasm::StartGame;
+use snake_wasm::CtrlEvent;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct KeyWrapper {
@@ -17,9 +17,9 @@ impl Into<Option<Direction>> for KeyWrapper {
         }
     }
 }
-impl Into<Option<StartGame>> for KeyWrapper {
-    fn into(self) -> Option<StartGame> {
-        Some(StartGame)
+impl Into<Option<CtrlEvent>> for KeyWrapper {
+    fn into(self) -> Option<CtrlEvent> {
+        Some(CtrlEvent::StartGame)
     }
 }
 

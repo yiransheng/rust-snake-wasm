@@ -12,7 +12,10 @@ use void::Void;
 use super::input_buffer::InputDblBuffer;
 use super::render::{DrawGrid, IncrRender};
 
-pub struct GameOver;
+pub enum GameOver {
+    Over,
+    Quit,
+}
 
 impl Into<GameOver> for Void {
     fn into(self) -> GameOver {
@@ -38,7 +41,6 @@ pub trait Stateful<'m> {
     fn make_game<E>(self, env: E) -> Box<Game<Self, E>>
     where
         Self: Sized,
-        E: 'static,
     {
         Box::new(Game { model: self, env })
     }
@@ -208,20 +210,26 @@ where
         &mut self,
         cmd: Option<Self::Cmd>,
     ) -> Result<Option<Self::Update>, Self::Error> {
+        let err: GameOver;
+
         match self.current() {
             Either::Left(a) => match a.step(cmd.and_then(|c| c.into())) {
                 Ok(u) => return Ok(u),
-                _ => {}
+                Err(e) => {
+                    err = e.into();
+                }
             },
             Either::Right(b) => match b.step(cmd.and_then(|c| c.into())) {
                 Ok(u) => return Ok(u),
-                _ => {}
+                Err(e) => {
+                    err = e.into();
+                }
             },
         }
 
         self.swap();
 
-        Err(GameOver)
+        Err(err)
     }
 
     fn tear_down(&mut self) {
@@ -255,7 +263,7 @@ where
         let this = Box::leak(self);
         let buf = Rc::new(RefCell::new(InputDblBuffer::new()));
 
-        (buf.clone(), move || loop {
+        (buf.clone(), move || 'app: loop {
             {
                 let iter = this.model.initialize();
                 for update in iter {
@@ -264,8 +272,7 @@ where
                 }
             }
 
-            loop {
-                // render loop
+            'game: loop {
                 let cmd = buf.borrow_mut().read();
                 let update = this.model.step(cmd);
 
@@ -275,7 +282,10 @@ where
                         yield_from!(renderer.to_generator(&mut this.env));
                     }
                     Ok(None) => yield (),
-                    Err(_) => break,
+                    Err(err) => match err.into() {
+                        GameOver::Over => break 'game,
+                        GameOver::Quit => break 'app,
+                    },
                 }
 
                 buf.borrow_mut()

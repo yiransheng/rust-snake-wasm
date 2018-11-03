@@ -4,12 +4,15 @@ use data::Key;
 use system::{GameOver, Stateful};
 use world::WorldUpdate;
 
-pub struct StartGame;
+pub enum CtrlEvent {
+    StartGame,
+    QuitGame,
+}
 
-impl Into<Option<StartGame>> for Key {
-    fn into(self) -> Option<StartGame> {
+impl Into<Option<CtrlEvent>> for Key {
+    fn into(self) -> Option<CtrlEvent> {
         if self != Key::none() {
-            Some(StartGame)
+            Some(CtrlEvent::StartGame)
         } else {
             None
         }
@@ -31,7 +34,7 @@ impl<'m, U> Stateful<'m> for Dead<U>
 where
     U: 'static + From<WorldUpdate>,
 {
-    type Cmd = StartGame;
+    type Cmd = CtrlEvent;
     type Init = Option<U>;
     type Update = U;
     type Error = GameOver;
@@ -45,7 +48,8 @@ where
         cmd: Option<Self::Cmd>,
     ) -> Result<Option<Self::Update>, Self::Error> {
         match cmd {
-            Some(StartGame) => Err(GameOver),
+            Some(CtrlEvent::StartGame) => Err(GameOver::Over),
+            Some(CtrlEvent::QuitGame) => Err(GameOver::Quit),
             _ => Ok(None),
         }
     }

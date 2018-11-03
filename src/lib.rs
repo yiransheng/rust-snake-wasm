@@ -15,15 +15,17 @@ extern crate web_sys;
 extern crate wee_alloc;
 
 #[macro_use]
-extern crate matches;
-#[macro_use]
 extern crate itertools;
-#[macro_use]
-extern crate indoc;
 extern crate arraydeque;
 extern crate morton;
 extern crate rand;
 
+#[macro_use]
+#[cfg(test)]
+extern crate indoc;
+#[macro_use]
+#[cfg(test)]
+extern crate matches;
 #[macro_use]
 #[cfg(test)]
 extern crate quickcheck;
@@ -51,7 +53,7 @@ mod constants;
 pub use acceleration::{RenderSpeed, VariableFrame};
 pub use canvas::{partial_tile, WorldUpdateDraw};
 pub use data::{Bounding, Direction, Key, Wrapping};
-pub use dead::{Dead, StartGame};
+pub use dead::{CtrlEvent, Dead};
 pub use system::*;
 pub use world::{World, WorldBuilder, WorldUpdate};
 
