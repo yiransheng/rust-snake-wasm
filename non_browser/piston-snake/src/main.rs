@@ -53,7 +53,7 @@ fn main() {
     let world: World<SmallRng, Wrapping> = WorldBuilder::new()
         .width(WIDTH as u16)
         .height(HEIGHT as u16)
-        .set_snake(0, 0)
+        .set_snake(1, 1)
         .extend(facing)
         .extend(facing)
         .extend(facing)
