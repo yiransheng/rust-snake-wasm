@@ -28,7 +28,7 @@ dev: BUILD=debug
 dev: clean cargo_debug wasm webpack
 	yarn serve
 
-opt: dist
+opt: webpack
 	DIST_WASM=$(shell find ./docs  -name \*.wasm) && \
 	wasm-opt -Oz $$DIST_WASM -o optimized.wasm && \
 	mv optimized.wasm $$DIST_WASM
