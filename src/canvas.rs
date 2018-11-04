@@ -105,7 +105,7 @@ impl DrawGrid for CanvasEnv {
         dir: Direction,
         size: UnitInterval,
     ) {
-        let (x, y, w, h) = self.partial_tile(x, y, dir, size);
+        let (x, y, w, h) = partial_tile(self.tile_size, x, y, dir, size);
 
         self.gc.fill_rect(x, y, w, h);
     }
@@ -118,7 +118,7 @@ impl DrawGrid for CanvasEnv {
         dir: Direction,
         size: UnitInterval,
     ) {
-        let (x, y, w, h) = self.partial_tile(x, y, dir, size);
+        let (x, y, w, h) = partial_tile(self.tile_size, x, y, dir, size);
 
         self.gc.clear_rect(x, y, w, h);
         self.gc.stroke_rect(x, y, self.tile_size, self.tile_size);
@@ -146,53 +146,51 @@ impl DrawGrid for CanvasEnv {
     }
 }
 
-impl CanvasEnv {
-    fn partial_tile(
-        &mut self,
-        x: SmallNat,
-        y: SmallNat,
-        dir: Direction,
-        size: UnitInterval,
-    ) -> (f64, f64, f64, f64) {
-        let x0 = x as f64 * self.tile_size;
-        let y0 = y as f64 * self.tile_size;
+pub fn partial_tile(
+    tile_size: f64,
+    x: SmallNat,
+    y: SmallNat,
+    dir: Direction,
+    size: UnitInterval,
+) -> (f64, f64, f64, f64) {
+    let x0 = x as f64 * tile_size;
+    let y0 = y as f64 * tile_size;
 
-        let long = self.tile_size;
-        let short = size.scale(self.tile_size);
+    let long = tile_size;
+    let short = size.scale(tile_size);
 
-        let x;
-        let y;
-        let w;
-        let h;
+    let x;
+    let y;
+    let w;
+    let h;
 
-        match dir {
-            Direction::East => {
-                x = x0;
-                y = y0;
-                w = short;
-                h = long;
-            }
-            Direction::West => {
-                x = x0 + long - short;
-                y = y0;
-                w = short;
-                h = long;
-            }
-            Direction::South => {
-                x = x0;
-                y = y0;
-                w = long;
-                h = short;
-            }
-            Direction::North => {
-                x = x0;
-                y = y0 + long - short;
-                w = long;
-                h = short;
-            }
+    match dir {
+        Direction::East => {
+            x = x0;
+            y = y0;
+            w = short;
+            h = long;
         }
-        (x, y, w, h)
+        Direction::West => {
+            x = x0 + long - short;
+            y = y0;
+            w = short;
+            h = long;
+        }
+        Direction::South => {
+            x = x0;
+            y = y0;
+            w = long;
+            h = short;
+        }
+        Direction::North => {
+            x = x0;
+            y = y0 + long - short;
+            w = long;
+            h = short;
+        }
     }
+    (x, y, w, h)
 }
 
 pub struct WorldUpdateDraw<U: Into<WorldUpdate> = WorldUpdate> {
@@ -229,7 +227,7 @@ where
     }
 
     #[inline]
-    pub fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+    pub fn render<E: DrawGrid>(&mut self, env: &mut E) -> Option<()> {
         let next_frame = self.draw_frame(env);
 
         if next_frame >= self.total_frame {

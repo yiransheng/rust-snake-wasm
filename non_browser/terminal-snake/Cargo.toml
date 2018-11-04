@@ -1,0 +1,13 @@
+[package]
+name = "terminal-snake"
+version = "0.1.0"
+authors = ["Yiran Sheng <shengyiran@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+termion = "1.5.1"
+
+[dependencies.snake-wasm]
+path = "../../"
+default-features = false
+features = ["std"]

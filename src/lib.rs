@@ -15,15 +15,17 @@ extern crate web_sys;
 extern crate wee_alloc;
 
 #[macro_use]
-extern crate matches;
-#[macro_use]
 extern crate itertools;
-#[macro_use]
-extern crate indoc;
 extern crate arraydeque;
 extern crate morton;
 extern crate rand;
 
+#[macro_use]
+#[cfg(test)]
+extern crate indoc;
+#[macro_use]
+#[cfg(test)]
+extern crate matches;
 #[macro_use]
 #[cfg(test)]
 extern crate quickcheck;
@@ -32,26 +34,30 @@ use alloc::boxed::Box;
 
 use std::ops::Generator;
 
-use rand::rngs::SmallRng;
+pub use rand::rngs::SmallRng;
 use wasm_bindgen::prelude::*;
 
 #[macro_use]
 mod macros;
 
-mod acceleration;
+pub mod data;
+pub mod system;
+pub mod world;
+
+pub mod acceleration;
+pub mod dead;
+
 mod canvas;
 mod constants;
-mod data;
-mod dead;
-mod system;
-mod world;
 
-use acceleration::{RenderSpeed, VariableFrame};
-use canvas::{CanvasEnv, WorldUpdateDraw};
-use data::{Bounding, Direction, Key, Wrapping};
-use dead::Dead;
-use system::Stateful;
-use world::{World, WorldBuilder, WorldUpdate};
+pub use acceleration::{RenderSpeed, VariableFrame};
+pub use canvas::{partial_tile, WorldUpdateDraw};
+pub use data::{Bounding, Direction, Key, Wrapping};
+pub use dead::{CtrlEvent, Dead};
+pub use system::*;
+pub use world::{World, WorldBuilder, WorldUpdate};
+
+use canvas::CanvasEnv;
 
 #[global_allocator]
 #[cfg(not(any(feature = "std", test, debug)))]

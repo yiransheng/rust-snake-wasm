@@ -37,7 +37,7 @@ pub enum UpdateError {
 
 impl Into<GameOver> for UpdateError {
     fn into(self) -> GameOver {
-        GameOver
+        GameOver::Over
     }
 }
 
