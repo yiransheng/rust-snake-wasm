@@ -18,6 +18,7 @@ A weirdly designed snake game in rust & WebAssembley, primarily aimed for retain
 ![](./screenshots/acceleration.gif)
 
 * VIM key bindings supported (h,j,k,l)
+* `no_std`
 * Retained rendering; in each tick, only one tile is drawn or cleared leaving vast majority of pixels on canvas untouched
 * Perhaps too over-engineered, trying to explore various fun and unique abstractions afforded by rust
 * Minimal world model completely decoupled from drawing code, easily ported over to other environments and rendering targets (although in trying to run it with piston, retained rendering doesn't quite work..)
@@ -55,13 +56,37 @@ fn test_death() {
 
 
 
-## Build
+## Usage
 
-Requires:
+### Stuff to Install
 
-- rust nightly
-- wasm-bindgen
-- npm / yarn
+1. `wasm32-unknown-unknown` target and `wasm-bindgen-cli`
 
-TODO: more details
+```
+rustup target add wasm32-unknown-unknown --toolchain nightly
+cargo +nightly install wasm-bindgen-cli
+```
 
+2. `node` and `yarn`
+3. (optional) `wasm-opt` install from: [https://github.com/WebAssembly/binaryen](https://github.com/WebAssembly/binaryen)
+
+### Build
+
+Development
+
+```
+make dev
+```
+
+Build (cargo release build, `no_std`, `wee_alloc`, `webpack --mode=production` and `wasm-opt`)
+
+```
+make
+# serve ./docs
+```
+
+Test
+
+```
+cargo test
+```

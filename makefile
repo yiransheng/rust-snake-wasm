@@ -1,3 +1,18 @@
+## Build Tools:
+## ===================
+## 1. rustup + cargo:
+## https://rustwasm.github.io/wasm-bindgen/whirlwind-tour/basic-usage.html
+#
+# rustup target add wasm32-unknown-unknown --toolchain nightly
+#
+## 2. wasm-bindgen-cli
+# cargo +nightly install wasm-bindgen-cli
+#
+## 3. nodejs + yarn
+# yarn
+#
+## 4 (optional) wasm-opt: https://github.com/WebAssembly/binaryen
+
 CRATE_NAME := snake_wasm
 DIST := docs
 
@@ -6,11 +21,11 @@ build_dir=${CURDIR}/target/wasm32-unknown-unknown/${BUILD}
 
 WASM_FILES := $(CRATE_NAME).js $(CRATE_NAME)_bg.wasm
 
-release: BUILD=release
-release: clean cargo_release wasm dist opt
+dist: BUILD=release
+dist: clean cargo_release wasm webpack opt
 
 dev: BUILD=debug
-dev: clean cargo_debug wasm dist
+dev: clean cargo_debug wasm webpack
 	yarn serve
 
 opt: dist
@@ -18,7 +33,7 @@ opt: dist
 	wasm-opt -Os $$DIST_WASM -o optimized.wasm && \
 	mv optimized.wasm $$DIST_WASM
 
-dist: wasm
+webpack: wasm
 	yarn build
 
 wasm:
