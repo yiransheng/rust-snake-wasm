@@ -30,7 +30,7 @@ dev: clean cargo_debug wasm webpack
 
 opt: dist
 	DIST_WASM=$(shell find ./docs  -name \*.wasm) && \
-	wasm-opt -Os $$DIST_WASM -o optimized.wasm && \
+	wasm-opt -Oz $$DIST_WASM -o optimized.wasm && \
 	mv optimized.wasm $$DIST_WASM
 
 webpack: wasm
