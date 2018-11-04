@@ -2,6 +2,10 @@
   box-sizing: border-box;
 }
 
+canvas {
+  border: 2px solid #f6d3d4;
+}
+
 .keybox {
   cursor: pointer;
   font-size: 24px;
