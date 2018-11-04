@@ -99,13 +99,13 @@ pub fn main() {
         .alternating::<Key, _>(Dead::new())
         .make_game(CanvasEnv::new());
 
-    let (cmd_buffer, mut generator) =
+    let (tx, mut generator) =
         game.new_game::<WorldUpdateDraw<VariableFrame<WorldUpdate>>, Key>();
 
     let each_tick = Closure::wrap(Box::new(move |key: u8| {
         let key = Key::from(key);
 
-        cmd_buffer.borrow_mut().write(key);
+        tx.send(key);
 
         unsafe {
             generator.resume();

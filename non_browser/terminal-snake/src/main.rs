@@ -43,7 +43,7 @@ fn main() {
 
     let game = world.alternating::<Key, _>(Dead::new()).make_game(term_env);
 
-    let (cmd_buffer, mut generator) = game.new_game::<DrawUpdate, Key>();
+    let (tx, mut generator) = game.new_game::<DrawUpdate, Key>();
     let interval = Duration::from_millis(16);
 
     let mut before = Instant::now();
@@ -59,7 +59,7 @@ fn main() {
         if key.is_quit() {
             break;
         } else {
-            cmd_buffer.borrow_mut().write(key);
+            tx.send(key);
         }
 
         if dt < interval {

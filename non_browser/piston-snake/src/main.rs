@@ -67,7 +67,7 @@ fn main() {
         .alternating::<KeyWrapper, _>(Dead::new())
         .make_game(TileUpdate::new(tx));
 
-    let (cmd_buffer, mut generator) = game.new_game::<DrawUpdate, KeyWrapper>();
+    let (tx, mut generator) = game.new_game::<DrawUpdate, KeyWrapper>();
 
     let mut tiles = Tiles::new();
 
@@ -77,7 +77,7 @@ fn main() {
 
     while let Some(event) = window.next() {
         if let Some(Button::Keyboard(key)) = event.press_args() {
-            cmd_buffer.borrow_mut().write(KeyWrapper::from(key));
+            tx.send(KeyWrapper::from(key));
         }
 
         logic_tick.run(&event);

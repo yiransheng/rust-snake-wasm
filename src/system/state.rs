@@ -245,16 +245,24 @@ pub struct Game<M, E> {
     env: E,
 }
 
+pub struct CmdSender<T> {
+    inner: Rc<RefCell<InputDblBuffer<T>>>,
+}
+
+impl<T: Eq> CmdSender<T> {
+    #[inline(always)]
+    pub fn send<V: Into<Option<T>>>(&self, v: V) {
+        self.inner.borrow_mut().write(v);
+    }
+}
+
 impl<M, Cmd, U, E> Game<M, E>
 where
     M: for<'m> Stateful<'m, Update = U, Cmd = Cmd>,
 {
     pub fn new_game<R, Input>(
         self,
-    ) -> (
-        Rc<RefCell<InputDblBuffer<Cmd>>>,
-        impl Generator<Yield = (), Return = ()>,
-    )
+    ) -> (CmdSender<Cmd>, impl Generator<Yield = (), Return = ()>)
     where
         E: DrawGrid,
         R: IncrRender<Env = E, Patch = U>,
@@ -266,7 +274,7 @@ where
 
         let buf = Rc::new(RefCell::new(InputDblBuffer::new()));
 
-        (buf.clone(), move || 'app: loop {
+        (CmdSender { inner: buf.clone() }, move || 'app: loop {
             {
                 let iter = model.initialize();
                 for update in iter {
