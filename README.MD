@@ -18,6 +18,7 @@ A weirdly designed snake game in rust & WebAssembley, primarily aimed for retain
 ![](./screenshots/acceleration.gif)
 
 * VIM key bindings supported (h,j,k,l)
+* `no_std`
 * Retained rendering; in each tick, only one tile is drawn or cleared leaving vast majority of pixels on canvas untouched
 * Perhaps too over-engineered, trying to explore various fun and unique abstractions afforded by rust
 * Minimal world model completely decoupled from drawing code, easily ported over to other environments and rendering targets (although in trying to run it with piston, retained rendering doesn't quite work..)
