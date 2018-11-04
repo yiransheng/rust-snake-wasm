@@ -19,7 +19,7 @@ A weirdly designed snake game in rust & WebAssembley, primarily aimed for retain
 
 * VIM key bindings supported (h,j,k,l)
 * `no_std`
-* Retained rendering; in each tick, only one tile is drawn or cleared leaving vast majority of pixels on canvas untouched
+* Retained rendering; a game of life like appoach to game states
 * Perhaps too over-engineered, trying to explore various fun and unique abstractions afforded by rust
 * Minimal world model completely decoupled from drawing code, easily ported over to other environments and rendering targets (although in trying to run it with piston, retained rendering doesn't quite work..)
   * ..and enabled writing unit tests nicely like so:
