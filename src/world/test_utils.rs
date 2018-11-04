@@ -2,12 +2,10 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 
 use super::{SnakeIter, SnakeState, World};
-use data::{
-    Block, Bounding, BoundingBehavior, Coordinate, Direction, Grid, Wrapping,
-};
+use data::{Block, BoundingBehavior, Coordinate, Direction, Grid};
 
 impl<BB: BoundingBehavior> World<SmallRng, BB> {
     pub fn from_ascii(string: &str) -> Self {

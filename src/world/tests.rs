@@ -1,10 +1,8 @@
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 
-use super::test_utils::*;
 use super::*;
 
-use data::{Bounding, Grid, Wrapping};
+use data::{Bounding, Wrapping};
 
 #[test]
 fn test_two_steps_inchworm() {

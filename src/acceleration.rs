@@ -161,7 +161,7 @@ mod tests {
 
         let v1 = render_speed.velocity;
 
-        render_speed.step(None);
+        render_speed.step(None).unwrap();
 
         assert!(render_speed.velocity < v1);
     }
@@ -175,8 +175,6 @@ mod tests {
         render_speed.step(Some(dir)).unwrap();
         render_speed.step(Some(dir)).unwrap();
         render_speed.step(Some(dir)).unwrap();
-
-        let v1 = render_speed.velocity;
 
         let mut render_speed_a = render_speed;
         let mut render_speed_b = render_speed;

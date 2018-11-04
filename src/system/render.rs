@@ -1,7 +1,9 @@
 use data::SmallNat;
 
+use alloc::rc::{Rc, Weak};
+use std::cell::RefCell;
 use std::ops::Range;
-use std::ops::{Generator, GeneratorState};
+use std::ops::{DerefMut, Generator, GeneratorState};
 
 use data::Direction;
 
@@ -128,20 +130,23 @@ pub trait IncrRender {
 
     fn render(&mut self, env: &mut Self::Env) -> Option<()>;
 
-    fn to_generator(self, env: &mut Self::Env) -> IncrRenderGen<Self, Self::Env>
+    fn to_generator(
+        self,
+        env: &Rc<RefCell<Self::Env>>,
+    ) -> IncrRenderGen<Self, Self::Env>
     where
         Self: Sized,
     {
-        IncrRenderGen::Created(self, env)
+        IncrRenderGen::Created(self, Rc::downgrade(env))
     }
 }
 
-pub enum IncrRenderGen<'a, R, E> {
-    Created(R, &'a mut E),
-    InProgress(R, &'a mut E),
+pub enum IncrRenderGen<R, E> {
+    Created(R, Weak<RefCell<E>>),
+    InProgress(R, Weak<RefCell<E>>),
     Done,
 }
-impl<'a, R, E> Generator for IncrRenderGen<'a, R, E>
+impl<R, E> Generator for IncrRenderGen<R, E>
 where
     R: IncrRender<Env = E>,
     E: DrawGrid,
@@ -155,11 +160,24 @@ where
         match this {
             // yield once
             IncrRenderGen::Created(mut renderer, env) => {
-                match renderer.render(env) {
+                let env = match env.upgrade() {
+                    Some(env) => env,
+                    _ => {
+                        ::std::mem::replace(self, IncrRenderGen::Done);
+                        return GeneratorState::Yielded(());
+                    }
+                };
+
+                let mut env_ref = env.borrow_mut();
+
+                match renderer.render(env_ref.deref_mut()) {
                     Some(_) => {
                         ::std::mem::replace(
                             self,
-                            IncrRenderGen::InProgress(renderer, env),
+                            IncrRenderGen::InProgress(
+                                renderer,
+                                Rc::downgrade(&env),
+                            ),
                         );
                         GeneratorState::Yielded(())
                     }
@@ -171,11 +189,24 @@ where
             }
             // yield zero or more times
             IncrRenderGen::InProgress(mut renderer, env) => {
-                match renderer.render(env) {
+                let env = match env.upgrade() {
+                    Some(env) => env,
+                    _ => {
+                        ::std::mem::replace(self, IncrRenderGen::Done);
+                        return GeneratorState::Complete(());
+                    }
+                };
+
+                let mut env_ref = env.borrow_mut();
+
+                match renderer.render(env_ref.deref_mut()) {
                     Some(_) => {
                         ::std::mem::replace(
                             self,
-                            IncrRenderGen::InProgress(renderer, env),
+                            IncrRenderGen::InProgress(
+                                renderer,
+                                Rc::downgrade(&env),
+                            ),
                         );
                         GeneratorState::Yielded(())
                     }

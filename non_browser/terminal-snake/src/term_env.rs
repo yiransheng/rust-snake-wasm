@@ -12,6 +12,17 @@ pub struct TermEnv<W: Write> {
     width: SmallNat,
     height: SmallNat,
 }
+impl<W: Write> Drop for TermEnv<W> {
+    fn drop(&mut self) {
+        write!(
+            self.stdout,
+            "{}{}{}",
+            cursor::Goto(1, 1),
+            clear::All,
+            cursor::Show,
+        );
+    }
+}
 impl<'a> TermEnv<RawTerminal<StdoutLock<'a>>> {
     pub fn wrap(stdout: StdoutLock<'a>) -> Self {
         let stdout = stdout.into_raw_mode().unwrap();
@@ -36,6 +47,14 @@ impl<W: Write> DrawGrid for TermEnv<W> {
         self.height = height;
 
         self.clear();
+        write!(self.stdout, "{}", cursor::Hide);
+
+        writeln!(
+            self.stdout,
+            "{}Movements: h,j,k,l Quit: q Restart: Space",
+            cursor::Goto(1, self.height + 2),
+        )
+        .unwrap();
     }
 
     fn clear(&mut self) {
@@ -46,14 +65,6 @@ impl<W: Write> DrawGrid for TermEnv<W> {
                 write!(self.stdout, "{}.", cursor::Goto(x + 1, y + 1)).unwrap();
             }
         }
-
-        writeln!(
-            self.stdout,
-            "{}{}Movements: h,j,k,l Quit: q Restart: Space",
-            cursor::Hide,
-            cursor::Goto(1, self.height + 2),
-        )
-        .unwrap();
     }
 
     fn set_fill_color(&mut self, color: GameColor) -> GameColor {

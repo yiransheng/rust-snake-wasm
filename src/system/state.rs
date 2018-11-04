@@ -38,11 +38,11 @@ pub trait Stateful<'m> {
 
     fn tear_down(&mut self);
 
-    fn make_game<E>(self, env: E) -> Box<Game<Self, E>>
+    fn make_game<E>(self, env: E) -> Game<Self, E>
     where
         Self: Sized,
     {
-        Box::new(Game { model: self, env })
+        Game { model: self, env }
     }
 
     fn zip_with<T, R, F>(self, other: R, f: F) -> ZipWith<Self, R, F>
@@ -244,12 +244,13 @@ pub struct Game<M, E> {
     model: M,
     env: E,
 }
+
 impl<M, Cmd, U, E> Game<M, E>
 where
     M: for<'m> Stateful<'m, Update = U, Cmd = Cmd>,
 {
     pub fn new_game<R, Input>(
-        self: Box<Self>,
+        self,
     ) -> (
         Rc<RefCell<InputDblBuffer<Cmd>>>,
         impl Generator<Yield = (), Return = ()>,
@@ -260,26 +261,28 @@ where
         Input: Into<Option<Cmd>> + Copy + 'static,
         Cmd: Eq,
     {
-        let this = Box::leak(self);
+        let mut model = Box::new(self.model);
+        let env = Rc::new(RefCell::new(self.env));
+
         let buf = Rc::new(RefCell::new(InputDblBuffer::new()));
 
         (buf.clone(), move || 'app: loop {
             {
-                let iter = this.model.initialize();
+                let iter = model.initialize();
                 for update in iter {
                     let renderer = R::new_patch(update);
-                    yield_from!(renderer.to_generator(&mut this.env));
+                    yield_from!(renderer.to_generator(&env));
                 }
             }
 
             'game: loop {
                 let cmd = buf.borrow_mut().read();
-                let update = this.model.step(cmd);
+                let update = model.step(cmd);
 
                 match update {
                     Ok(Some(u)) => {
                         let renderer = R::new_patch(u);
-                        yield_from!(renderer.to_generator(&mut this.env));
+                        yield_from!(renderer.to_generator(&env));
                     }
                     Ok(None) => yield (),
                     Err(err) => match err.into() {
@@ -293,7 +296,129 @@ where
             }
 
             buf.borrow_mut().clear_both();
-            this.model.tear_down();
+            model.tear_down();
         })
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::render::*;
+    use super::*;
+    use data::*;
+
+    #[test]
+    fn test_drop() {
+        struct Empty<'a> {
+            dropped: &'a mut bool,
+        }
+        impl<'a> Drop for Empty<'a> {
+            fn drop(&mut self) {
+                *self.dropped = true;
+            }
+        }
+        impl<'a> Empty<'a> {
+            fn new(dropped: &'a mut bool) -> Self {
+                Empty { dropped }
+            }
+        }
+        impl<'a, 'm> Stateful<'m> for Empty<'a> {
+            type Cmd = ();
+            type Update = ();
+            type Init = Option<()>;
+            type Error = GameOver;
+
+            fn initialize(&'m mut self) -> Self::Init {
+                None
+            }
+
+            fn step(
+                &mut self,
+                _cmd: Option<Self::Cmd>,
+            ) -> Result<Option<Self::Update>, Self::Error> {
+                Ok(Some(()))
+            }
+
+            fn tear_down(&mut self) {}
+        }
+        impl<'a> DrawGrid for Empty<'a> {
+            fn setup(
+                &mut self,
+                _tile_size: SmallNat,
+                _width: SmallNat,
+                _height: SmallNat,
+            ) {
+            }
+
+            fn clear(&mut self) {}
+
+            // returns current fill color
+            fn set_fill_color(&mut self, color: Color) -> Color {
+                color
+            }
+
+            fn circle(
+                &mut self,
+                _x: SmallNat,
+                _y: SmallNat,
+                _radius: UnitInterval,
+            ) {
+            }
+
+            fn fill_tile(
+                &mut self,
+                _x: SmallNat,
+                _y: SmallNat,
+                _dir: Direction,
+                _size: UnitInterval,
+            ) {
+            }
+
+            fn clear_tile(
+                &mut self,
+                _x: SmallNat,
+                _y: SmallNat,
+                _dir: Direction,
+                _size: UnitInterval,
+            ) {
+            }
+
+            fn show_game_over(&mut self) {}
+        }
+        struct RenderNothing<'a> {
+            _lifetime: PhantomData<&'a ()>,
+        }
+
+        impl<'a> IncrRender for RenderNothing<'a> {
+            type Patch = ();
+            type Env = Empty<'a>;
+
+            fn new_patch(_u: Self::Patch) -> Self {
+                RenderNothing {
+                    _lifetime: PhantomData,
+                }
+            }
+            fn render(&mut self, _env: &mut Self::Env) -> Option<()> {
+                Some(())
+            }
+        }
+        // -------- test below ----------
+
+        let mut model_dropped = false;
+        let mut env_dropped = false;
+
+        {
+            let game = Empty::new(&mut model_dropped)
+                .make_game(Empty::new(&mut env_dropped));
+            let (_buf, mut gen) = game.new_game::<RenderNothing, ()>();
+
+            unsafe {
+                gen.resume();
+            }
+        }
+
+        assert!(model_dropped);
+        assert!(env_dropped);
+    }
+
 }

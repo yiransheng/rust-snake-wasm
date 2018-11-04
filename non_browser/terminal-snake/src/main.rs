@@ -74,10 +74,4 @@ fn main() {
             }
         }
     }
-
-    // dropping generator does not drop its upvar term_env for
-    // some reason, which should restore terminal settings on drop; thus
-    // right now this app leaves the terminal in a broken state
-    // (raw mode)
-    drop(generator);
 }
