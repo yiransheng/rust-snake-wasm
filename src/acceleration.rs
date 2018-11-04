@@ -1,8 +1,8 @@
 use void::Void;
 
-use canvas::WorldUpdateDraw;
 use constants::ANIMATION_FRAME_COUNT;
 use data::Direction;
+use draw::WorldUpdateDraw;
 use system::{DrawGrid, IncrRender, Stateful};
 use world::WorldUpdate;
 
