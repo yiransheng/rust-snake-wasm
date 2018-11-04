@@ -101,17 +101,16 @@ impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
 
         match self.state {
             SnakeState::Eaten => {
-                let block = self.motion();
-                let block = block?;
-                self.state = SnakeState::Consuming(block.into());
+                let block = self.motion()?;
+                self.state = SnakeState::Consuming(block);
 
                 Ok(Some(WorldUpdate::SetBlock {
                     block: self.get_block(self.head),
                     at: self.head,
                 }))
             }
-            SnakeState::Consuming(tile) => {
-                let r = self.digest(tile)?;
+            SnakeState::Consuming(block) => {
+                let r = self.digest(block)?;
                 self.state = SnakeState::Eaten;
                 Ok(Some(r))
             }
@@ -153,8 +152,8 @@ impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
         }
     }
 
-    fn digest(&mut self, tile: Block) -> Result<WorldUpdate> {
-        match tile {
+    fn digest(&mut self, block: Block) -> Result<WorldUpdate> {
+        match block {
             Block::Empty => {
                 let tail = self.tail;
                 let tail_block = self.get_block(tail);
