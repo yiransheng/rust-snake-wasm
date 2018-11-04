@@ -122,18 +122,14 @@ pub trait DrawGrid {
     }
 }
 
-pub trait IncrRender {
-    type Env: DrawGrid;
+pub trait IncrRender<Env> {
     type Patch;
 
     fn new_patch(u: Self::Patch) -> Self;
 
-    fn render(&mut self, env: &mut Self::Env) -> Option<()>;
+    fn render(&mut self, env: &mut Env) -> Option<()>;
 
-    fn to_generator(
-        self,
-        env: &Rc<RefCell<Self::Env>>,
-    ) -> IncrRenderGen<Self, Self::Env>
+    fn to_generator(self, env: &Rc<RefCell<Env>>) -> IncrRenderGen<Self, Env>
     where
         Self: Sized,
     {
@@ -148,7 +144,7 @@ pub enum IncrRenderGen<R, E> {
 }
 impl<R, E> Generator for IncrRenderGen<R, E>
 where
-    R: IncrRender<Env = E>,
+    R: IncrRender<E>,
     E: DrawGrid,
 {
     type Yield = ();

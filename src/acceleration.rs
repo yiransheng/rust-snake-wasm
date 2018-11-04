@@ -1,9 +1,9 @@
 use void::Void;
 
-use canvas::{CanvasEnv, WorldUpdateDraw};
 use constants::ANIMATION_FRAME_COUNT;
 use data::Direction;
-use system::{IncrRender, Stateful};
+use draw::WorldUpdateDraw;
+use system::{DrawGrid, IncrRender, Stateful};
 use world::WorldUpdate;
 
 pub struct VariableFrame<T = WorldUpdate> {
@@ -32,8 +32,9 @@ impl<T> VariableFrame<T> {
     }
 }
 
-impl IncrRender for WorldUpdateDraw<VariableFrame<WorldUpdate>> {
-    type Env = CanvasEnv;
+impl<E: DrawGrid> IncrRender<E>
+    for WorldUpdateDraw<VariableFrame<WorldUpdate>>
+{
     type Patch = VariableFrame<WorldUpdate>;
 
     fn new_patch(u: Self::Patch) -> Self {
@@ -42,7 +43,7 @@ impl IncrRender for WorldUpdateDraw<VariableFrame<WorldUpdate>> {
     }
 
     #[inline]
-    fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+    fn render(&mut self, env: &mut E) -> Option<()> {
         self.render(env)
     }
 }

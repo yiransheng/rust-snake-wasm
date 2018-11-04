@@ -41,6 +41,7 @@ use wasm_bindgen::prelude::*;
 mod macros;
 
 pub mod data;
+pub mod draw;
 pub mod system;
 pub mod world;
 
@@ -51,9 +52,10 @@ mod canvas;
 mod constants;
 
 pub use acceleration::{RenderSpeed, VariableFrame};
-pub use canvas::{partial_tile, WorldUpdateDraw};
+pub use canvas::partial_tile;
 pub use data::{Bounding, Direction, Key, Wrapping};
 pub use dead::{CtrlEvent, Dead};
+pub use draw::WorldUpdateDraw;
 pub use system::*;
 pub use world::{World, WorldBuilder, WorldUpdate};
 

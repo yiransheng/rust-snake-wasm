@@ -14,13 +14,11 @@ use snake_wasm::data::{Direction, Wrapping};
 use snake_wasm::dead::Dead;
 use snake_wasm::system::Stateful;
 use snake_wasm::world::{World, WorldBuilder};
-use snake_wasm::SmallRng;
+use snake_wasm::{SmallRng, WorldUpdateDraw};
 
-use self::draw::DrawUpdate;
 use self::key::Key;
 use self::term_env::TermEnv;
 
-mod draw;
 mod key;
 mod term_env;
 
@@ -43,7 +41,7 @@ fn main() {
 
     let game = world.alternating::<Key, _>(Dead::new()).make_game(term_env);
 
-    let (tx, mut generator) = game.new_game::<DrawUpdate, Key>();
+    let (tx, mut generator) = game.new_game::<WorldUpdateDraw, Key>();
     let interval = Duration::from_millis(16);
 
     let mut before = Instant::now();
