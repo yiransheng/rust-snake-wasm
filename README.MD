@@ -1,16 +1,57 @@
-# Rust Snake Game
+# Rust WASM Snake Game
 
-Link: [http://yiransheng.github.io/rust-snake-wasm/](http://yiransheng.github.io/rust-snake-wasm/)
-
-
-
-A snake game writing (mostly) in rust, using js for rendering (canvas).
-
-* Implemented using a O(1) update algorithm I came up in high school, when trying to code the thing on a PDA with very limited rendering capacity
-* Retained rendering mode, each tick, draws a new head, and erases snake tail (unless food is eaten)
-* Probably over-abstracted, but it's ok as this was mostly an exercise to explore rust in-depth
+Play Link: [http://yiransheng.github.io/rust-snake-wasm/](http://yiransheng.github.io/rust-snake-wasm/)
 
 
+
+![](./screenshots/games.png)
+
+
+
+A weirdly designed snake game in rust & WebAssembley, primarily aimed for retained mode rendering targeting canvas. Two non-browser targets are also included in [./non_browser](./non_browser).
+
+## Features
+
+* Snake movements are animated and smoothed over
+* Variable render speed, hold down direction keys to accelerate (opposite direction key to deaccelerate)
+
+![](./screenshots/acceleration.gif)
+
+* VIM key bindings supported (h,j,k,l)
+* Retained rendering; in each tick, only one tile is drawn or cleared leaving vast majority of pixels on canvas untouched
+* Perhaps too over-engineered, trying to explore various fun and unique abstractions afforded by rust
+* Minimal world model completely decoupled from drawing code, easily ported over to other environments and rendering targets (although in trying to run it with piston, retained rendering doesn't quite work..)
+  * ..and enabled writing unit tests nicely like so:
+
+```rust
+#[test]
+fn test_death() {
+    let snake_string = indoc!(
+        "
+        ..........
+        >>>>>>v...
+        ......v...
+        ..^<<<<...
+        .........*"
+    );
+    let afterwards = indoc!(
+        "
+        ..........
+        .oooooo...
+        ..o...o...
+        ..ooooo...
+        .........*"
+    );
+
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    while let Ok(_) = world.step(None) {}
+
+    assert_matches!(world.step(None), Err(UpdateError::CollideBody));
+
+    assert_eq!(&afterwards, &world.grid.to_string());
+}
+```
 
 
 

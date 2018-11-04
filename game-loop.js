@@ -179,11 +179,26 @@ export class GameLoop {
         this._onEnterFrame(this._key);
         this._rafId = window.requestAnimationFrame(this._run);
 
+        const keyEls = document.querySelectorAll('.key');
+
+        for (let i=0; i<= keyEls.length; i++) {
+          const el = keyEls[i];
+          if (!el || !el.dataset) {
+            continue;
+          }
+          const keyCode = Number(el.dataset.keyCode);
+          if (keyCode === this._key) {
+            el.classList.add('pressed');
+          } else {
+            el.classList.remove('pressed');
+          }
+        }
         if (this._isTap) {
           this._key = 0;
           this._isTap = false;
         }
       } catch (err) {
+        console.error(err);
         this.stop();
       }
     }
@@ -234,7 +249,7 @@ export class GameLoop {
       default:
     }
   }
-  _onKeyUp() {
+  _onKeyUp(_e: KeyboardEvent) {
     this._key = 0;
   }
 }

@@ -42,9 +42,10 @@ canvas {
   visibility: hidden;
 }
 
+.key.pressed,
 .key:hover {
   transform: translateY(2px);
-  background: #444;
+  background: #f32222;
   color: #f5f5f5;
   box-shadow: 0px 3px 0px 0px rgba(0, 0, 0, 1);
 }
