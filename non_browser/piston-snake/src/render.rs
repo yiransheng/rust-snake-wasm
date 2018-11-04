@@ -1,11 +1,9 @@
 use piston_window::types::Color;
 use piston_window::Rectangle;
 
-use snake_wasm::acceleration::VariableFrame;
 use snake_wasm::data::{Coordinate, Direction, SmallNat};
 use snake_wasm::{
-    partial_tile, Color as GameColor, DrawGrid, Either, IncrRender,
-    UnitInterval, WorldUpdate, WorldUpdateDraw,
+    partial_tile, Color as GameColor, DrawGrid, Either, UnitInterval,
 };
 
 use crate::channel::Sender;
@@ -141,27 +139,5 @@ impl TileUpdate {
             GameColor::Black => [0.13, 0.13, 0.13, 1.0],
             GameColor::Red => [0.95, 0.04, 0.04, 1.0],
         }
-    }
-}
-
-// Just a newtype, as we cannot implement trait for a type
-// outside of defining crate
-pub struct DrawUpdate {
-    draw: WorldUpdateDraw<VariableFrame<WorldUpdate>>,
-}
-impl IncrRender for DrawUpdate {
-    type Env = TileUpdate;
-    type Patch = VariableFrame<WorldUpdate>;
-
-    fn new_patch(u: Self::Patch) -> Self {
-        let frame_count = u.frame_count;
-        DrawUpdate {
-            draw: WorldUpdateDraw::new(u, frame_count),
-        }
-    }
-
-    #[inline(always)]
-    fn render(&mut self, env: &mut TileUpdate) -> Option<()> {
-        self.draw.render(env)
     }
 }

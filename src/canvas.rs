@@ -200,15 +200,14 @@ pub struct WorldUpdateDraw<U: Into<WorldUpdate> = WorldUpdate> {
     _update_type: PhantomData<U>,
 }
 
-impl IncrRender for WorldUpdateDraw<WorldUpdate> {
-    type Env = CanvasEnv;
+impl<E: DrawGrid> IncrRender<E> for WorldUpdateDraw<WorldUpdate> {
     type Patch = WorldUpdate;
 
     fn new_patch(u: WorldUpdate) -> Self {
         WorldUpdateDraw::new(u, ANIMATION_FRAME_COUNT)
     }
     #[inline]
-    fn render(&mut self, env: &mut CanvasEnv) -> Option<()> {
+    fn render(&mut self, env: &mut E) -> Option<()> {
         self.render(env)
     }
 }

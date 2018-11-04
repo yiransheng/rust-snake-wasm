@@ -13,12 +13,12 @@ use snake_wasm::data::{Direction, Wrapping};
 use snake_wasm::dead::Dead;
 use snake_wasm::system::{Either, Stateful};
 use snake_wasm::world::{World, WorldBuilder};
-use snake_wasm::SmallRng;
+use snake_wasm::{SmallRng, WorldUpdate, WorldUpdateDraw};
 
 use self::channel::channel;
 use self::constants::*;
 use self::key::KeyWrapper;
-use self::render::{Clear, DrawUpdate, TilePatch, TileUpdate};
+use self::render::{Clear, TilePatch, TileUpdate};
 use self::render_state::Tiles;
 use self::throttle::throttle;
 
@@ -67,7 +67,8 @@ fn main() {
         .alternating::<KeyWrapper, _>(Dead::new())
         .make_game(TileUpdate::new(tx));
 
-    let (tx, mut generator) = game.new_game::<DrawUpdate, KeyWrapper>();
+    let (tx, mut generator) = game
+        .new_game::<WorldUpdateDraw<VariableFrame<WorldUpdate>>, KeyWrapper>();
 
     let mut tiles = Tiles::new();
 

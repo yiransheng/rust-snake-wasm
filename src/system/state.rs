@@ -265,7 +265,7 @@ where
     ) -> (CmdSender<Cmd>, impl Generator<Yield = (), Return = ()>)
     where
         E: DrawGrid,
-        R: IncrRender<Env = E, Patch = U>,
+        R: IncrRender<E, Patch = U>,
         Input: Into<Option<Cmd>> + Copy + 'static,
         Cmd: Eq,
     {
@@ -397,16 +397,15 @@ mod tests {
             _lifetime: PhantomData<&'a ()>,
         }
 
-        impl<'a> IncrRender for RenderNothing<'a> {
+        impl<'a> IncrRender<Empty<'a>> for RenderNothing<'a> {
             type Patch = ();
-            type Env = Empty<'a>;
 
             fn new_patch(_u: Self::Patch) -> Self {
                 RenderNothing {
                     _lifetime: PhantomData,
                 }
             }
-            fn render(&mut self, _env: &mut Self::Env) -> Option<()> {
+            fn render(&mut self, _env: &mut Empty) -> Option<()> {
                 Some(())
             }
         }
