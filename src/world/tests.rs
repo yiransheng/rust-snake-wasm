@@ -138,50 +138,56 @@ fn test_bounding() {
     assert_eq!(&afterwards, &world.grid.to_string());
 }
 
-#[test]
-fn test_set_direction_when_eaten() {
-    let snake_string = indoc!(
-        "
-        ..........
-        .>>>>.....
-        ..........
-        ....*.....
-        .........."
-    );
-    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
-
-    assert_matches!(world.state, SnakeState::Eaten);
-
-    let current_dir = world.get_head_dir().unwrap();
-    let allowed_dir_1 = current_dir.turn_left();
-    let allowed_dir_2 = current_dir.turn_right();
-    let not_allowed_dir = current_dir.opposite();
-
-    let next_dir_1 = _set_direction_when_eaten(&mut world, allowed_dir_1);
-
-    _set_direction_when_eaten(&mut world, current_dir); // restore
-    let next_dir_2 = _set_direction_when_eaten(&mut world, allowed_dir_2);
-
-    _set_direction_when_eaten(&mut world, current_dir); // restore
-    let next_dir_3 = _set_direction_when_eaten(&mut world, not_allowed_dir);
-
-    assert_eq!(allowed_dir_1, next_dir_1);
-    assert_eq!(allowed_dir_2, next_dir_2);
-    assert_eq!(current_dir, next_dir_3);
-}
-fn _set_direction_when_eaten(
-    world: &mut World<SmallRng, Wrapping>,
-    dir: Direction,
-) -> Direction {
-    while SnakeState::Eaten != world.state {
-        world.step(None);
+impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
+    fn head_dir(&self) -> Direction {
+        self.get_block(self.head).snake().unwrap()
     }
-    world.set_direction(dir).unwrap();
-    world.get_head_dir().unwrap()
+    fn with_direction<F>(&mut self, dir: Direction, f: F)
+    where
+        F: Fn(Direction, Direction),
+    {
+        let prev_dir = self.head_dir();
+        self.set_direction(dir).unwrap();
+        let next_dir = self.head_dir();
+
+        f(prev_dir, next_dir);
+
+        let head = self.head;
+        self.set_block(head, Block::Snake(prev_dir));
+    }
 }
 
 #[test]
-fn test_set_direction_when_consuming() {
+fn test_set_direction_one_block_snake() {
+    let snake_string = indoc!(
+        "
+        ..........
+        ....>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    world.with_direction(Direction::North, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::North);
+    });
+
+    world.with_direction(Direction::East, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::East);
+    });
+
+    world.with_direction(Direction::South, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::South);
+    });
+
+    world.with_direction(Direction::West, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::West);
+    });
+}
+
+#[test]
+fn test_set_direction_straight() {
     let snake_string = indoc!(
         "
         ..........
@@ -192,39 +198,50 @@ fn test_set_direction_when_consuming() {
     );
     let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
 
-    world.step(None).unwrap();
-    assert_matches!(world.state, SnakeState::Consuming(_, _));
+    world.with_direction(Direction::North, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::North);
+    });
 
-    let current_dir = world.get_head_dir().unwrap();
-    world.set_direction(current_dir.turn_left()).unwrap();
-    let next_dir = world.get_head_dir().unwrap();
+    world.with_direction(Direction::East, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::East);
+    });
 
-    assert_eq!(current_dir, next_dir);
+    world.with_direction(Direction::South, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::South);
+    });
+
+    world.with_direction(Direction::West, |prev_dir, next_dir| {
+        assert_eq!(next_dir, prev_dir);
+    });
 }
 
 #[test]
-fn test_set_direction_when_turning() {
+fn test_set_direction_turning() {
     let snake_string = indoc!(
         "
         ..........
-        .>>>>.....
+        .>>>^.....
         ..........
         ....*.....
         .........."
     );
     let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
 
-    world.step(None).unwrap();
+    world.with_direction(Direction::North, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::North);
+    });
 
-    let dir = world.get_head_dir().map(Direction::turn_left).ok();
-    world.step(dir).unwrap();
+    world.with_direction(Direction::East, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::East);
+    });
 
-    assert_matches!(world.state, SnakeState::Turning(_));
+    world.with_direction(Direction::South, |_prev_dir, next_dir| {
+        assert_eq!(next_dir, Direction::South);
+    });
 
-    let current_dir = world.get_head_dir().unwrap();
-    world.set_direction(current_dir.turn_right()).unwrap();
-
-    assert_matches!(world.state, SnakeState::Eaten);
+    world.with_direction(Direction::West, |prev_dir, next_dir| {
+        assert_eq!(next_dir, prev_dir);
+    });
 }
 
 #[test]

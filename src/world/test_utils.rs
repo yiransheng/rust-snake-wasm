@@ -101,14 +101,14 @@ pub fn chars_from_ascii_grid<'a>(
 pub fn find_snake_tail<BB: BoundingBehavior>(
     grid: &Grid,
 ) -> Option<Coordinate> {
-    for (x, y) in iproduct!(0..grid.width(), 0..grid.height()) {
-        let coord = Coordinate { x, y };
+    let snake_coords = iproduct!(0..grid.width(), 0..grid.height())
+        .map(|(x, y)| Coordinate { x, y })
+        .filter(|coord| grid[*coord].snake().is_some());
+
+    for coord in snake_coords {
         let block = grid[coord];
 
-        let dir = match block {
-            Block::Snake(dir) => dir,
-            _ => continue,
-        };
+        let dir = block.snake().unwrap();
 
         let next_block = coord
             .move_towards(dir)
@@ -122,15 +122,13 @@ pub fn find_snake_tail<BB: BoundingBehavior>(
             .map(|c| grid[c])
             .unwrap_or(Block::OutOfBound);
 
-        // is tail
-        match (prev_block, next_block) {
-            (Block::Empty, Block::Snake(_)) => {
+        match (prev_block.snake(), next_block.snake()) {
+            (None, Some(_)) => {
+                // is tail
                 return Some(coord);
             }
-            (Block::OutOfBound, Block::Snake(_)) => {
-                return Some(coord);
-            }
-            (Block::Food, Block::Snake(_)) => {
+            (None, None) => {
+                // only snake block
                 return Some(coord);
             }
             _ => {}
