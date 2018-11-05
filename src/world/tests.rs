@@ -139,7 +139,97 @@ fn test_bounding() {
 }
 
 #[test]
-fn test_set_direction() {
+fn test_set_direction_when_eaten() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let mut world: World<SmallRng, Wrapping> = World::from_ascii(snake_string);
+
+    assert_matches!(world.state, SnakeState::Eaten);
+
+    let current_dir = world.get_head_dir().unwrap();
+    let allowed_dir_1 = current_dir.turn_left();
+    let allowed_dir_2 = current_dir.turn_right();
+    let not_allowed_dir = current_dir.opposite();
+
+    let next_dir_1 = _set_direction_when_eaten(&mut world, allowed_dir_1);
+
+    _set_direction_when_eaten(&mut world, current_dir); // restore
+    let next_dir_2 = _set_direction_when_eaten(&mut world, allowed_dir_2);
+
+    _set_direction_when_eaten(&mut world, current_dir); // restore
+    let next_dir_3 = _set_direction_when_eaten(&mut world, not_allowed_dir);
+
+    assert_eq!(allowed_dir_1, next_dir_1);
+    assert_eq!(allowed_dir_2, next_dir_2);
+    assert_eq!(current_dir, next_dir_3);
+}
+fn _set_direction_when_eaten(
+    world: &mut World<SmallRng, Wrapping>,
+    dir: Direction,
+) -> Direction {
+    while SnakeState::Eaten != world.state {
+        world.step(None);
+    }
+    world.set_direction(dir).unwrap();
+    world.get_head_dir().unwrap()
+}
+
+#[test]
+fn test_set_direction_when_consuming() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    world.step(None).unwrap();
+    assert_matches!(world.state, SnakeState::Consuming(_, _));
+
+    let current_dir = world.get_head_dir().unwrap();
+    world.set_direction(current_dir.turn_left()).unwrap();
+    let next_dir = world.get_head_dir().unwrap();
+
+    assert_eq!(current_dir, next_dir);
+}
+
+#[test]
+fn test_set_direction_when_turning() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    world.step(None).unwrap();
+
+    let dir = world.get_head_dir().map(Direction::turn_left).ok();
+    world.step(dir).unwrap();
+
+    assert_matches!(world.state, SnakeState::Turning(_));
+
+    let current_dir = world.get_head_dir().unwrap();
+    world.set_direction(current_dir.turn_right()).unwrap();
+
+    assert_matches!(world.state, SnakeState::Eaten);
+}
+
+#[test]
+fn test_set_direction_when_consuming_does_not_kill_it() {
+    // gh issue: https://github.com/yiransheng/rust-snake-wasm/issues/11
     let snake_string = indoc!(
         "
         ..........
