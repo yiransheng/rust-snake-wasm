@@ -139,6 +139,23 @@ fn test_bounding() {
 }
 
 #[test]
+fn test_set_direction() {
+    let snake_string = indoc!(
+        "
+        ..........
+        .>>>>.....
+        ..........
+        ....*.....
+        .........."
+    );
+    let mut world: World<SmallRng, Bounding> = World::from_ascii(snake_string);
+
+    world.step(None);
+    world.step(Some(Direction::North));
+    assert_matches!(world.step(Some(Direction::West)), Ok(_));
+}
+
+#[test]
 fn test_death() {
     let snake_string = indoc!(
         "
