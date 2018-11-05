@@ -40,6 +40,19 @@ impl Direction {
             Direction::West => Direction::East,
         }
     }
+    #[cfg(test)]
+    pub fn turn_left(self) -> Self {
+        match self {
+            Direction::North => Direction::West,
+            Direction::South => Direction::East,
+            Direction::East => Direction::North,
+            Direction::West => Direction::South,
+        }
+    }
+    #[cfg(test)]
+    pub fn turn_right(self) -> Self {
+        self.opposite().turn_left()
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
