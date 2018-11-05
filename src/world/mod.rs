@@ -41,11 +41,10 @@ impl Into<GameOver> for UpdateError {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 enum SnakeState {
     Eaten,
-    Consuming(Block, Direction),
-    Turning(Direction),
+    Consuming(Block),
 }
 
 pub struct World<R, BB: BoundingBehavior = Wrapping> {
@@ -101,53 +100,32 @@ impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
         }
 
         match self.state {
-            SnakeState::Turning(dir) => self.step(Some(dir)),
             SnakeState::Eaten => {
                 let block = self.motion()?;
-                let head_next = self
-                    .get_block(self.head)
-                    .snake_or_err(UpdateError::HeadDetached)?;
-
-                self.state = SnakeState::Consuming(block, head_next);
+                self.state = SnakeState::Consuming(block);
 
                 Ok(Some(WorldUpdate::SetBlock {
                     block: self.get_block(self.head),
                     at: self.head,
                 }))
             }
-            SnakeState::Consuming(block, heading_next) => {
+            SnakeState::Consuming(block) => {
                 let r = self.digest(block)?;
-                let current_dir = self.get_head_dir()?;
-
-                if heading_next == current_dir {
-                    self.state = SnakeState::Eaten;
-                } else {
-                    self.state = SnakeState::Turning(heading_next);
-                }
-
+                self.state = SnakeState::Eaten;
                 Ok(Some(r))
             }
         }
     }
     fn set_direction(&mut self, dir: Direction) -> Result<()> {
-        match self.state {
-            SnakeState::Eaten => {
-                let head = self.head;
-                let head_dir = self.get_head_dir()?;
+        let head = self.head;
+        let will_collide_neck = head
+            .move_towards(dir)
+            .inside::<BB>(&self.grid)
+            .filter(|coord| self.is_neck(*coord))
+            .is_some();
 
-                if dir != head_dir.opposite() {
-                    self.set_block(head, dir);
-                }
-            }
-            SnakeState::Consuming(block, head_next) => {
-                if dir != head_next.opposite() {
-                    self.state = SnakeState::Consuming(block, dir);
-                }
-            }
-            SnakeState::Turning(remembered_dir) => {
-                self.state = SnakeState::Eaten;
-                self.set_direction(remembered_dir)?;
-            }
+        if !will_collide_neck {
+            self.set_block(head, Block::Snake(dir));
         }
 
         Ok(())
@@ -243,10 +221,14 @@ impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
 
         self.initial_snake = initial_snake;
     }
-    #[inline]
-    fn get_head_dir(&self) -> Result<Direction> {
-        self.get_block(self.head)
-            .snake_or_err(UpdateError::HeadDetached)
+
+    fn is_neck(&self, coord: Coordinate) -> bool {
+        let mut iter = self.iter_snake_from(coord);
+        iter.next();
+
+        iter.next()
+            .filter(|(next_coord, _)| *next_coord == self.head)
+            .is_some()
     }
 
     #[inline(always)]
@@ -262,6 +244,11 @@ impl<R: Rng, BB: BoundingBehavior> World<R, BB> {
     #[inline]
     fn iter_snake(&self) -> SnakeIter<BB> {
         SnakeIter::new(&self.grid, self.tail)
+    }
+
+    #[inline]
+    fn iter_snake_from(&self, coord: Coordinate) -> SnakeIter<BB> {
+        SnakeIter::new(&self.grid, coord)
     }
 }
 
