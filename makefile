@@ -19,7 +19,7 @@ DIST := docs
 BUILD := release
 build_dir=${CURDIR}/target/wasm32-unknown-unknown/${BUILD}
 
-WASM_FILES := $(CRATE_NAME).js $(CRATE_NAME)_bg.wasm
+WASM_FILES := $(CURDIR)/js/$(CRATE_NAME).js $(CURDIR)/js/$(CRATE_NAME)_bg.wasm
 
 dist: BUILD=release
 dist: clean cargo_release wasm webpack opt
@@ -28,7 +28,7 @@ dev: BUILD=debug
 dev: clean cargo_debug wasm webpack
 	yarn serve
 
-opt: dist
+opt: webpack
 	DIST_WASM=$(shell find ./docs  -name \*.wasm) && \
 	wasm-opt -Os $$DIST_WASM -o optimized.wasm && \
 	mv optimized.wasm $$DIST_WASM
@@ -37,7 +37,7 @@ webpack: wasm
 	yarn build
 
 wasm:
-	wasm-bindgen ${build_dir}/${CRATE_NAME}.wasm --out-dir .
+	wasm-bindgen ${build_dir}/${CRATE_NAME}.wasm --out-dir ./js
 
 cargo_release:
 	cargo +nightly build --release --target wasm32-unknown-unknown
