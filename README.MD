@@ -54,7 +54,19 @@ fn test_death() {
 }
 ```
 
+## Similar Projects
 
+Other snakesssssss (with rust and wasm):
+
+* https://github.com/alamminsalo/snakewasm
+* https://github.com/dmacewen/snake_wasm
+
+* https://github.com/tensor-programming/wasm_snake_example
+
+* https://github.com/mardiros/wasm-snake
+* https://github.com/BurNiinTRee/Snake
+* https://github.com/DarrenTsung/wrg-snake
+* https://github.com/kirjavascript/snake-rs
 
 ## Usage
 
