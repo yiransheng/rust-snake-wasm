@@ -6,8 +6,8 @@ const webpack = require("webpack");
 module.exports = {
   mode: "production",
   entry: { 
-    index: "./index.js",
-    polyfills: "./polyfills.js",
+    index: "./js/index.js",
+    polyfills: "./js/polyfills.js",
   },
   output: {
     path: path.resolve(__dirname, "docs"),
